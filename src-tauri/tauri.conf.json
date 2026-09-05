@@ -45,7 +45,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDMwQjc5Q0VGQ0Y5OUMzMQpSV1F4blBuOHpua0xBOHlVSDd1cTNJUGFFK3hTZjRUU3N4SG9DK3l4QUpMaTNnR3VrclVRNUNrUAo=",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQ3NjRBQTJFQUE4NkFDMzkKUldRNXJJYXFMcXBrUnc0eThyU0pDRXNzUHBiQkhyNFZETlVQM0tybkd6dlpWcFpEZjhEenF0WVUK",
       "endpoints": [
         "https://github.com/Corentinjsn/GAMLIB/releases/latest/download/latest.json"
       ],
