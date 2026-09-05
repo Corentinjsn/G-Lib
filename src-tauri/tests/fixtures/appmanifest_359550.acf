@@ -1,0 +1,69 @@
+"AppState"
+{
+	"appid"		"359550"
+	"universe"		"1"
+	"LauncherPath"		"C:\\Program Files (x86)\\Steam\\steam.exe"
+	"name"		"Tom Clancy's Rainbow Six Siege"
+	"StateFlags"		"4"
+	"installdir"		"Tom Clancy's Rainbow Six Siege"
+	"LastUpdated"		"1788456057"
+	"LastPlayed"		"1771013925"
+	"SizeOnDisk"		"51071355985"
+	"StagingSize"		"0"
+	"buildid"		"25087309"
+	"LastOwner"		"76561190000000000"
+	"DownloadType"		"1"
+	"UpdateResult"		"0"
+	"BytesToDownload"		"19671994480"
+	"BytesDownloaded"		"19671994480"
+	"BytesToStage"		"41738925584"
+	"BytesStaged"		"41738925584"
+	"TargetBuildID"		"25087309"
+	"AutoUpdateBehavior"		"0"
+	"AllowOtherDownloadsWhileRunning"		"0"
+	"ScheduledAutoUpdate"		"0"
+	"InstalledDepots"
+	{
+		"359551"
+		{
+			"manifest"		"8842837532710448149"
+			"size"		"49993029681"
+		}
+		"359553"
+		{
+			"manifest"		"3590367801542571352"
+			"size"		"807876091"
+		}
+		"377237"
+		{
+			"manifest"		"2596889043830139563"
+			"size"		"5677960"
+		}
+		"1716751"
+		{
+			"manifest"		"6659642105086821873"
+			"size"		"264786072"
+		}
+	}
+	"InstallScripts"
+	{
+		"377237"		"359550_install.vdf"
+	}
+	"SharedDepots"
+	{
+		"228983"		"228980"
+		"228984"		"228980"
+		"228986"		"228980"
+		"228987"		"228980"
+		"228988"		"228980"
+		"228990"		"228980"
+	}
+	"UserConfig"
+	{
+		"language"		"french"
+	}
+	"MountedConfig"
+	{
+		"language"		"french"
+	}
+}

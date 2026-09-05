@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@theme {
+  /* Dark, low-chroma surfaces so cover art carries all the colour. */
+  --color-surface-0: #0b0d12;
+  --color-surface-1: #12151d;
+  --color-surface-2: #1a1f2b;
+  --color-surface-3: #232936;
+  --color-line: #262d3b;
+  --color-ink: #e6e9ef;
+  --color-ink-muted: #8b93a7;
+  --color-ink-faint: #5c6478;
+  --color-accent: #66c0f4;
+
+  --font-sans: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-surface-0);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    /* A desktop app should not feel like a web page. */
+    user-select: none;
+    overflow: hidden;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-surface-3);
+    border-radius: 999px;
+    border: 2px solid var(--color-surface-0);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #313a4c;
+  }
+
+  input {
+    user-select: text;
+  }
+}
