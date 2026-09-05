@@ -225,6 +225,11 @@ export function TitleBar({
           </button>
         )}
 
+        {/* La barre porte deux familles de boutons : ceux de l'application et
+            ceux de la fenetre. Rien ne les distinguait puisqu'ils partagent la
+            meme trame et le meme ton — le trait dit ou l'une finit. */}
+        <span aria-hidden className="mx-1.5 h-4 w-px bg-line" />
+
         {/* Sized and coloured like the system's own, close included: a title
             bar that behaves like one is worth more than a styled one. */}
         <button
