@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { formatAgo } from "../lib/format";
 
 interface Props {
   /** Version on offer, or null when there is nothing to install. */
@@ -7,6 +8,22 @@ interface Props {
   updateDownloading: boolean;
   updateProgress: number;
   onInstallUpdate: () => void;
+  syncing: boolean;
+  onSync: () => void;
+  /** Unix epoch seconds of the last completed sync, if any. */
+  syncedAt: number | null;
+}
+
+/**
+ * Re-renders once a minute so the sync stamp does not sit on "à l'instant"
+ * for an app that has been open all afternoon.
+ */
+function useMinuteTick() {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setTick((n) => n + 1), 60_000);
+    return () => clearInterval(timer);
+  }, []);
 }
 
 /**
@@ -15,6 +32,25 @@ interface Props {
  * Drawn rather than borrowed so it keeps its weight at 15 pixels, where an
  * icon font would go muddy.
  */
+/** The refresh mark: a ring open at the top, with its own arrow head. */
+function RefreshIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-[15px]"
+    >
+      <path d="M20 11a8 8 0 1 0-1.8 6" />
+      <path d="M20 4v7h-7" />
+    </svg>
+  );
+}
+
 function DownloadIcon() {
   return (
     <svg
@@ -93,8 +129,13 @@ export function TitleBar({
   updateDownloading,
   updateProgress,
   onInstallUpdate,
+  syncing,
+  onSync,
+  syncedAt,
 }: Props) {
   const [maximized, setMaximized] = useState(false);
+  useMinuteTick();
+  const syncedAgo = formatAgo(syncedAt);
 
   useEffect(() => {
     const window = getCurrentWindow();
@@ -113,11 +154,9 @@ export function TitleBar({
       data-tauri-drag-region
       className="relative z-50 flex h-8 shrink-0 items-center justify-between border-b border-line bg-surface-1 pl-3 select-none"
     >
-      {/* Absolutely placed so the name sits at the centre of the window rather
-          than the centre of whatever space the buttons leave over. */}
       <span
         data-tauri-drag-region
-        className="pointer-events-none absolute inset-x-0 flex items-baseline justify-center gap-1.5"
+        className="pointer-events-none flex items-baseline gap-1.5"
       >
         <span className="font-display text-[13px] leading-none font-semibold tracking-tight text-ink">
           Gamlib
@@ -130,6 +169,31 @@ export function TitleBar({
       <span data-tauri-drag-region className="h-full flex-1" />
 
       <div className="flex h-full items-center">
+        {/* Un bouton « Sync » occupait le bas de la barre laterale pour une
+            action qu'on declenche rarement — la synchronisation se fait au
+            demarrage et sur detection de changement. Reduit a son icone, il
+            reste a portee sans prendre de place. */}
+        <button
+          type="button"
+          onClick={onSync}
+          disabled={syncing}
+          aria-label="Synchroniser"
+          title={
+            syncing
+              ? "Synchronisation…"
+              : syncedAgo
+                ? `Synchroniser — dernière sync ${syncedAgo}`
+                : "Synchroniser"
+          }
+          className={`flex h-8 w-11 items-center justify-center transition disabled:cursor-progress ${
+            syncing
+              ? "animate-spin text-accent"
+              : "text-ink-muted hover:text-ink"
+          }`}
+        >
+          <RefreshIcon />
+        </button>
+
         {/* Sans fond : l'icone seule, sur la meme trame que les boutons de
             fenetre. C'est le vert qui la fait remarquer, une pastille
             n'ajouterait que du bruit dans une barre haute de huit points. */}
