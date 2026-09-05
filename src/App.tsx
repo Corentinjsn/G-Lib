@@ -364,6 +364,7 @@ export default function App() {
         installFilter={installFilter}
         onInstallFilterChange={setInstallFilter}
         installCounts={counts}
+        enterTarget={visible[0]?.name ?? null}
         query={query}
         onQueryChange={setQuery}
         sort={sort}
@@ -433,6 +434,9 @@ export default function App() {
           onClose={() => setSelectedId(null)}
           onLaunch={() => handleLaunch(selected)}
           onOpenFolder={() => handleOpenFolder(selected)}
+          onToggleFavorite={() =>
+            void toggleFlag(selected, "favorite", !selected.favorite)
+          }
         />
       )}
 
