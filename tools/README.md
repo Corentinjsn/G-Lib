@@ -2,27 +2,35 @@
 
 ## `make-icon.ps1`
 
-Dessine l'icône de l'application. Elle n'est pas peinte à la main : c'est du
-code, pour qu'un changement de palette reste une modification d'une ligne
-plutôt qu'un aller-retour dans un éditeur d'images.
+Compose l'icône de l'application à partir du logo (`public/GAMLIB.png`).
 
-Trois cartes de jeu en éventail — orange EA, bleu Ubisoft, cyan Steam, les
-mêmes accents que les pastilles de plateforme de la barre latérale — avec un
-bouton lecture au centre. Le triangle fait environ deux tiers de la carte : en
-dessous il disparaît dans un bouton de barre des tâches à 16 px, au-dessus la
-carte cesse de se lire comme une carte.
+Le logo n'est pas utilisable tel quel comme icône : il est en deux aplats,
+`#222222` pour les cartes et `#F6F4F0` pour le G, donc posé sur une barre des
+tâches Windows sombre il disparaît. Le script le centre sur une pastille
+arrondie crème — la couleur est reprise du G du logo, aucune teinte n'est
+inventée — et rogne d'abord les marges transparentes pour que le cadrage
+dépende du dessin plutôt que de la taille du fichier.
 
 Régénérer le jeu d'icônes complet :
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools/make-icon.ps1 `
-  -OutFile src-tauri/icons/icon-source.png -Size 1024
+  -LogoFile public/GAMLIB.png -OutFile src-tauri/icons/icon-source.png -Size 1024
 ```
 
 ```bash
 bun run tauri icon src-tauri/icons/icon-source.png
 ```
 
-`tauri icon` produit aussi des variantes iOS et Android. Le projet ne vise que
-Windows, donc `src-tauri/icons/ios` et `src-tauri/icons/android` sont supprimés
-après coup.
+Deux pièges après coup :
+
+- `tauri icon` produit aussi des variantes iOS et Android. Le projet ne vise que
+  Windows, donc `src-tauri/icons/ios` et `src-tauri/icons/android` sont
+  supprimés.
+- Cargo ne surveille pas les fichiers d'icônes. Sans un `touch` sur
+  `src-tauri/build.rs`, la ressource n'est pas ré-embarquée et le binaire garde
+  l'ancienne icône.
+
+Les paramètres `-Inset` (part du côté occupée par le logo, 0.72 par défaut) et
+`-Background` permettent de recadrer ou de changer la pastille sans toucher au
+code.
