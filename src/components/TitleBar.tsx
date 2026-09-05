@@ -130,6 +130,9 @@ export function TitleBar({
       <span data-tauri-drag-region className="h-full flex-1" />
 
       <div className="flex h-full items-center">
+        {/* Sans fond : l'icone seule, sur la meme trame que les boutons de
+            fenetre. C'est le vert qui la fait remarquer, une pastille
+            n'ajouterait que du bruit dans une barre haute de huit points. */}
         {updateVersion && (
           <button
             type="button"
@@ -141,10 +144,10 @@ export function TitleBar({
                 ? `Téléchargement… ${Math.round(updateProgress * 100)} %`
                 : `Mettre à jour vers ${updateVersion}`
             }
-            className="mr-2 flex items-center gap-1.5 rounded-full bg-[#23a55a]/15 px-2 py-1 text-[#23a55a] transition hover:bg-[#23a55a]/25 disabled:cursor-progress"
+            className="flex h-8 w-11 items-center justify-center text-[#23a55a] transition hover:brightness-125 disabled:cursor-progress"
           >
             {updateDownloading ? (
-              <span className="size-[15px] animate-pulse rounded-full bg-[#23a55a]" />
+              <span className="size-[11px] animate-pulse rounded-full bg-[#23a55a]" />
             ) : (
               <DownloadIcon />
             )}
