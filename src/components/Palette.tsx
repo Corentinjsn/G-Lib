@@ -7,6 +7,7 @@ import {
 } from "react";
 import { coverUrl } from "../lib/api";
 import { normalize } from "../lib/format";
+import { listStep } from "../lib/keys";
 import { searchPalette } from "../lib/library";
 import { PLATFORM_COLORS, PLATFORM_LABELS, type Game } from "../types";
 import { KbdHint } from "./Kbd";
@@ -162,6 +163,14 @@ export function Palette({ games, actionsFor, onLaunch, onClose }: Props) {
   };
 
   const onKeyDown = (event: KeyboardEvent) => {
+    // The field has the focus, so j and k have to reach it as letters. The
+    // vertical motions are the control-key ones a Neovim picker uses, which is
+    // also why Ctrl+K stops closing the palette once it is open.
+    const step = listStep({
+      key: event.key,
+      ctrl: event.ctrlKey || event.metaKey,
+    });
+
     // Tab moves between the two levels rather than between focusable elements:
     // the palette has exactly one field, so the browser's own use for the key
     // would go nowhere.
@@ -182,9 +191,8 @@ export function Palette({ games, actionsFor, onLaunch, onClose }: Props) {
       }
       if (shownActions.length === 0) return;
 
-      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      if (step !== 0) {
         event.preventDefault();
-        const step = event.key === "ArrowDown" ? 1 : -1;
         setActionActive(
           (current) =>
             (current + step + shownActions.length) % shownActions.length,
@@ -205,9 +213,8 @@ export function Palette({ games, actionsFor, onLaunch, onClose }: Props) {
     }
     if (results.length === 0) return;
 
-    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    if (step !== 0) {
       event.preventDefault();
-      const step = event.key === "ArrowDown" ? 1 : -1;
       // Wraps, because a palette is a short ring: reaching the end and pressing
       // down again should not simply stop.
       setActive((current) => (current + step + results.length) % results.length);

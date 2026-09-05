@@ -392,10 +392,11 @@ export default function App() {
     onLaunch: handleLaunch,
     onToggleFavorite: (game: Game) =>
       void toggleFlag(game, "favorite", !game.favorite),
-    onTogglePalette: () => setPaletteOpen((open) => !open),
+    onOpenPalette: () => setPaletteOpen(true),
+    paletteOpen,
     gridRef: gridScroll,
     // A context menu, a dialog or the palette owns the keyboard while it is
-    // open; the palette runs its own arrows over its own results.
+    // open; the palette runs its own motions over its own results.
     enabled: menu === null && dialog === null && !paletteOpen,
   });
 
