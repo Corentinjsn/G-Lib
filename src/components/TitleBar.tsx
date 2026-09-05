@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { formatAgo } from "../lib/format";
+import { LogoMark } from "./LogoMark";
 
 interface Props {
   /** Version on offer, or null when there is nothing to install. */
@@ -152,12 +153,16 @@ export function TitleBar({
   return (
     <header
       data-tauri-drag-region
-      className="relative z-50 flex h-8 shrink-0 items-center justify-between border-b border-line bg-surface-1 pl-3 select-none"
+      className="relative z-50 flex h-8 shrink-0 items-center justify-between border-b border-line bg-surface-1 pl-2.5 select-none"
     >
       <span
         data-tauri-drag-region
-        className="pointer-events-none flex items-baseline gap-1.5"
+        className="pointer-events-none flex items-center gap-1"
       >
+        {/* La marque dessinee plutot que le PNG : a cette taille, un aplat de
+            16 pixels devient une bouillie, alors que les traits du SVG
+            tiennent. */}
+        <LogoMark className="h-[20px] w-auto" />
         <span className="font-display text-[13px] leading-none font-semibold tracking-tight text-ink">
           Gamlib
         </span>
