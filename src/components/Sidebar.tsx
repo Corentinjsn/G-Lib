@@ -4,6 +4,7 @@ import {
   INSTALL_FILTERS,
   INSTALL_FILTER_LABELS,
   PLATFORMS,
+  PLATFORM_COLORS,
   PLATFORM_LABELS,
   SORT_LABELS,
   selectionKey,
@@ -16,7 +17,7 @@ import {
 } from "../types";
 import { SEARCH_INPUT_ID } from "../hooks/useGridKeys";
 import { Kbd } from "./Kbd";
-import { PlatformDot } from "./PlatformBadge";
+import { PlatformIcon } from "./PlatformIcon";
 
 interface Props {
   /** Already narrowed by the install filter, so counts match what is shown. */
@@ -105,7 +106,7 @@ function GroupRow({
   onToggle,
   onSelect,
   onContextMenu,
-  dot,
+  icon,
 }: {
   label: string;
   count: string;
@@ -115,7 +116,8 @@ function GroupRow({
   onToggle?: () => void;
   onSelect: () => void;
   onContextMenu?: (event: MouseEvent) => void;
-  dot?: Game["platform"];
+  /** Drawn beside the label: a store is its mark. */
+  icon?: Game["platform"];
 }) {
   return (
     <div
@@ -142,7 +144,11 @@ function GroupRow({
         title={title}
         className="flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-2.5 text-left text-sm hover:text-ink"
       >
-        {dot && <PlatformDot platform={dot} />}
+        {icon && (
+          <span style={{ color: PLATFORM_COLORS[icon] }}>
+            <PlatformIcon platform={icon} className="size-4" />
+          </span>
+        )}
         <span className="flex-1 truncate">{label}</span>
         <span className="text-xs tabular-nums text-ink-faint">{count}</span>
       </button>
@@ -373,13 +379,14 @@ export function Sidebar({
           return (
             <div key={platform}>
               <GroupRow
-                label={PLATFORM_LABELS[platform]}
+                label=""
+                title={PLATFORM_LABELS[platform]}
                 count={String(list.length)}
                 active={active === key}
                 expanded={expanded.has(key)}
                 onToggle={() => toggle(key)}
                 onSelect={() => onSelectionChange({ kind: "platform", platform })}
-                dot={platform}
+                icon={platform}
               />
               {expanded.has(key) && gameRows(list)}
             </div>
