@@ -67,8 +67,16 @@ export function Sidebar({
 }: Props) {
   return (
     <aside className="flex w-60 shrink-0 flex-col gap-4 border-r border-line bg-surface-1 p-4">
-      <div className="flex items-baseline gap-2">
-        <h1 className="text-lg font-bold tracking-[0.2em] text-ink">GAMLIB</h1>
+      <div className="flex items-center gap-2.5">
+        <img
+          src="/GAMLIB.png"
+          alt=""
+          draggable={false}
+          className="size-8 shrink-0 object-contain"
+        />
+        <h1 className="font-display text-2xl leading-none font-semibold tracking-tight text-ink">
+          Gamlib
+        </h1>
         <span className="text-[10px] text-ink-faint">v0.1</span>
       </div>
 

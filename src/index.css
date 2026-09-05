@@ -1,4 +1,7 @@
 @import "tailwindcss";
+/* Bundled rather than pulled from Google Fonts: the CSP allows no remote
+   hosts, and the app has to look right offline. SIL OFL. */
+@import "@fontsource-variable/league-spartan";
 
 @theme {
   /* Dark, low-chroma surfaces so cover art carries all the colour. */
@@ -13,6 +16,8 @@
   --color-accent: #66c0f4;
 
   --font-sans: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  /* Reserved for the wordmark; the interface stays on the system face. */
+  --font-display: "League Spartan Variable", "Segoe UI", system-ui, sans-serif;
 }
 
 @layer base {
