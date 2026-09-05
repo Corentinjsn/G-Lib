@@ -1,6 +1,6 @@
 import { coverUrl } from "../lib/api";
 import { formatLastPlayed, formatPlaytime, formatSize } from "../lib/format";
-import { PLATFORM_LABELS, type Game } from "../types";
+import { type Game } from "../types";
 import { Kbd } from "./Kbd";
 import { PlatformBadge } from "./PlatformBadge";
 
@@ -82,7 +82,6 @@ export function GameDetail({ game, onClose, onLaunch, onOpenFolder }: Props) {
         </div>
 
         <div className="flex flex-col gap-3 border-t border-line pt-4">
-          <Field label="Plateforme" value={PLATFORM_LABELS[game.platform]} />
           <Field
             label="État"
             value={game.installed ? "Installé" : "Possédé, non installé"}

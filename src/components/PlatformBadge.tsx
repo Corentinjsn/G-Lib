@@ -1,22 +1,22 @@
 import { PLATFORM_COLORS, PLATFORM_LABELS, type Platform } from "../types";
+import { PlatformIcon } from "./PlatformIcon";
 
-export function PlatformDot({ platform }: { platform: Platform }) {
-  return (
-    <span
-      className="size-2 shrink-0 rounded-full"
-      style={{ background: PLATFORM_COLORS[platform] }}
-    />
-  );
-}
-
+/**
+ * The store a game comes from, shown as its own mark.
+ *
+ * A logo is read at a glance where a word has to be; on a wall of cover art
+ * that matters, and it keeps the badge small enough not to fight the artwork.
+ * The name still reaches assistive technology and the tooltip through the
+ * icon's own label.
+ */
 export function PlatformBadge({ platform }: { platform: Platform }) {
   return (
     <span
-      className="inline-flex items-center gap-1.5 rounded-md bg-surface-0/80 px-1.5 py-0.5 text-[10px] font-medium tracking-wide backdrop-blur-sm"
+      title={PLATFORM_LABELS[platform]}
+      className="inline-flex items-center rounded-md bg-surface-0/80 p-1 backdrop-blur-sm"
       style={{ color: PLATFORM_COLORS[platform] }}
     >
-      <PlatformDot platform={platform} />
-      {PLATFORM_LABELS[platform]}
+      <PlatformIcon platform={platform} className="size-3.5" />
     </span>
   );
 }
