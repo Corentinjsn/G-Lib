@@ -68,8 +68,8 @@ export function Splash({
         <div className="flex w-72 flex-col gap-3">
           <p className="text-center text-sm text-ink-muted">
             {update.version
-              ? `Mise à jour vers ${update.version}…`
-              : "Mise à jour…"}
+              ? `Mise à jour vers ${update.version}`
+              : "Mise à jour"}
           </p>
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
             <div
@@ -77,8 +77,13 @@ export function Splash({
               style={{ width: `${Math.round(update.progress * 100)}%` }}
             />
           </div>
+          {/* Once the download is done the installer runs on its own for a few
+              seconds, saying nothing. Without this the bar sits full and the
+              window looks stuck. */}
           <p className="text-center text-[11px] text-ink-faint">
-            L'application redémarrera toute seule.
+            {update.progress >= 1
+              ? "Installation…  l'application redémarrera toute seule."
+              : `Téléchargement… ${Math.round(update.progress * 100)} %`}
           </p>
         </div>
       ) : (
