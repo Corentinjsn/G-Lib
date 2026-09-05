@@ -27,12 +27,6 @@ function useMinuteTick() {
   }, []);
 }
 
-/**
- * The download mark: an arrow onto a line.
- *
- * Drawn rather than borrowed so it keeps its weight at 15 pixels, where an
- * icon font would go muddy.
- */
 /** The refresh mark: a ring open at the top, with its own arrow head. */
 function RefreshIcon() {
   return (
@@ -52,7 +46,13 @@ function RefreshIcon() {
   );
 }
 
-function DownloadIcon() {
+/**
+ * The download mark: an arrow onto a line.
+ *
+ * Drawn rather than borrowed so it keeps its weight at fifteen pixels, where
+ * an icon font would go muddy.
+ */
+function DownloadIcon({ className = "size-[15px]" }: { className?: string }) {
   return (
     <svg
       aria-hidden
@@ -62,12 +62,63 @@ function DownloadIcon() {
       strokeWidth="2.4"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="size-[15px]"
+      className={className}
     >
       <path d="M12 3v11" />
       <path d="m7 10 5 5 5-5" />
       <path d="M4 20h16" />
     </svg>
+  );
+}
+
+/**
+ * How far the download has got, drawn around the mark itself.
+ *
+ * A dot in place of the button said only « quelque chose se passe » — not that
+ * it was progressing, nor how far. The ring keeps the button's footprint and
+ * answers both.
+ *
+ * The progress stays at zero until the server reports a content length, so the
+ * ring turns while it is unknown rather than sitting empty: that is the
+ * difference between waiting and wedged.
+ */
+function DownloadProgress({ progress }: { progress: number }) {
+  const radius = 10.5;
+  const circumference = 2 * Math.PI * radius;
+  const known = progress > 0;
+  const filled = known ? Math.min(1, progress) : 0.25;
+
+  return (
+    <span className="relative flex size-[22px] items-center justify-center">
+      <svg
+        aria-hidden
+        viewBox="0 0 24 24"
+        // Le quart de tour place le depart de l'arc a midi.
+        className={`absolute size-[22px] -rotate-90 ${known ? "" : "animate-spin"}`}
+      >
+        <circle
+          cx="12"
+          cy="12"
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          opacity="0.25"
+        />
+        <circle
+          cx="12"
+          cy="12"
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference * (1 - filled)}
+        />
+      </svg>
+      <DownloadIcon className="size-[10px]" />
+    </span>
   );
 }
 
@@ -218,7 +269,7 @@ export function TitleBar({
             className="flex h-8 w-11 items-center justify-center text-[#23a55a] transition hover:brightness-125 disabled:cursor-progress"
           >
             {updateDownloading ? (
-              <span className="size-[11px] animate-pulse rounded-full bg-[#23a55a]" />
+              <DownloadProgress progress={updateProgress} />
             ) : (
               <DownloadIcon />
             )}
