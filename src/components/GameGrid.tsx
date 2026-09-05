@@ -18,7 +18,10 @@ export function GameGrid({
   onContextMenu,
 }: Props) {
   return (
-    <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-4 p-6">
+    <div
+      data-game-grid
+      className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-4 p-6"
+    >
       {games.map((game) => (
         <GameCard
           key={game.id}

@@ -49,6 +49,7 @@ export function GameCard({
 
   return (
     <div
+      data-game-id={game.id}
       role="button"
       tabIndex={0}
       onClick={onSelect}
@@ -92,6 +93,16 @@ export function GameCard({
       <div className="absolute top-1.5 left-1.5">
         <PlatformBadge platform={game.platform} />
       </div>
+
+      {game.favorite && (
+        <span
+          title="Favori"
+          aria-label="Favori"
+          className="absolute bottom-1.5 left-1.5 rounded-md bg-surface-0/85 px-1.5 py-0.5 text-[11px] leading-none text-accent backdrop-blur-sm"
+        >
+          ★
+        </span>
+      )}
 
       {!game.installed && (
         <span

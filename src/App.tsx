@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+} from "react";
 import { ContextMenu, type MenuState } from "./components/ContextMenu";
 import { GameDetail } from "./components/GameDetail";
 import { GameGrid } from "./components/GameGrid";
@@ -6,9 +13,10 @@ import { NameDialog } from "./components/NameDialog";
 import { Sidebar } from "./components/Sidebar";
 import { Splash, type SplashStep } from "./components/Splash";
 import { useCollections } from "./hooks/useCollections";
+import { useGridKeys } from "./hooks/useGridKeys";
 import { useLibrary } from "./hooks/useLibrary";
 import { useUpdate } from "./hooks/useUpdate";
-import { launchGame, openInstallDir } from "./lib/api";
+import { launchGame, openInstallDir, setGameFlag } from "./lib/api";
 import { normalize } from "./lib/format";
 import {
   INSTALL_FILTER_LABELS,
@@ -42,7 +50,7 @@ function EmptyState({ scanning }: { scanning: boolean }) {
 }
 
 export default function App() {
-  const { result, status, error, refresh } = useLibrary();
+  const { result, status, error, refresh, applyResult } = useLibrary();
 
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortKey>("name");
@@ -52,6 +60,7 @@ export default function App() {
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const gridScroll = useRef<HTMLDivElement>(null);
 
   const showError = useCallback((message: string) => setToast(message), []);
   const collections = useCollections(showError);
@@ -81,7 +90,21 @@ export default function App() {
     },
   ];
 
-  const games = useMemo(() => result?.games ?? [], [result]);
+  const allGames = useMemo(() => result?.games ?? [], [result]);
+  const hiddenCount = useMemo(
+    () => allGames.filter((game) => game.hidden).length,
+    [allGames],
+  );
+
+  /* Hidden games are absent from every view but their own, so this comes
+     before the install filter and before any selection. */
+  const games = useMemo(
+    () =>
+      selection.kind === "hidden"
+        ? allGames.filter((game) => game.hidden)
+        : allGames.filter((game) => !game.hidden),
+    [allGames, selection.kind],
+  );
 
   const installCounts = useMemo(() => {
     const installed = games.filter((game) => game.installed).length;
@@ -107,6 +130,11 @@ export default function App() {
     const needle = normalize(query.trim());
     const inSelection = (game: Game) => {
       switch (selection.kind) {
+        case "favorites":
+          return game.favorite;
+        // The hidden view is already the whole universe here.
+        case "hidden":
+          return true;
         case "platform":
           return game.platform === selection.platform;
         case "collection": {
@@ -173,6 +201,14 @@ export default function App() {
     void run(openInstallDir(game.id), "Impossible d'ouvrir le dossier");
   };
 
+  const toggleFlag = async (game: Game, name: string, value: boolean) => {
+    try {
+      applyResult(await setGameFlag(game.id, name, value));
+    } catch (cause) {
+      setToast(`Impossible de modifier ${game.name} : ${cause}`);
+    }
+  };
+
   const openGameMenu = (game: Game, event: MouseEvent) => {
     event.preventDefault();
     setSelectedId(game.id);
@@ -193,12 +229,30 @@ export default function App() {
               },
             ]
           : []),
+        {
+          label: "Favori",
+          checked: game.favorite,
+          divider: true,
+          action: () => {
+            void toggleFlag(game, "favorite", !game.favorite);
+            setMenu(null);
+          },
+        },
+        {
+          label: "Masquer",
+          checked: game.hidden,
+          action: () => {
+            void toggleFlag(game, "hidden", !game.hidden);
+            setMenu(null);
+          },
+        },
         // Membership is a set of toggles rather than a submenu: a game can be
         // in several lists, and this shows which at a glance.
         ...collections.collections.map((collection, index) => ({
           label: collection.name,
           checked: collection.gameIds.includes(game.id),
           divider: index === 0,
+
           action: () => {
             void collections.setMembership(
               collection.id,
@@ -268,6 +322,10 @@ export default function App() {
 
   const scopeLabel = useMemo(() => {
     switch (selection.kind) {
+      case "favorites":
+        return "favoris";
+      case "hidden":
+        return "masqués";
       case "platform":
         return PLATFORM_LABELS[selection.platform];
       case "collection":
@@ -279,6 +337,16 @@ export default function App() {
         return INSTALL_FILTER_LABELS[installFilter].toLowerCase();
     }
   }, [selection, collections.collections, installFilter]);
+
+  useGridKeys({
+    games: visible,
+    selectedId,
+    onSelect: setSelectedId,
+    onLaunch: handleLaunch,
+    gridRef: gridScroll,
+    // A context menu or a dialog owns the keyboard while it is open.
+    enabled: menu === null && dialog === null,
+  });
 
   if (!ready) {
     return <Splash steps={splashSteps} />;
@@ -307,6 +375,7 @@ export default function App() {
         onSync={() => void refresh()}
         syncedAt={result?.scannedAt ?? null}
         errors={result?.errors ?? []}
+        hiddenCount={hiddenCount}
         updateVersion={update.phase === "none" ? null : update.version}
         updateDownloading={update.phase === "downloading"}
         updateProgress={update.progress}
@@ -328,7 +397,7 @@ export default function App() {
           )}
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div ref={gridScroll} className="min-h-0 flex-1 overflow-y-auto">
           {visible.length > 0 ? (
             <GameGrid
               games={visible}

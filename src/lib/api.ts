@@ -26,6 +26,12 @@ export const coverUrl = (path: string | null): string | null =>
 /* Every collection command answers with the whole list, so the frontend never
    has to guess what the file now holds. */
 
+/* Per-game marks. Like the collection commands, each answers with the whole
+   library so the grid never has to guess. */
+
+export const setGameFlag = (gameId: string, name: string, value: boolean) =>
+  invoke<ScanResult>("set_game_flag", { gameId, name, value });
+
 export const listCollections = () => invoke<Collection[]>("list_collections");
 
 export const createCollection = (name: string) =>

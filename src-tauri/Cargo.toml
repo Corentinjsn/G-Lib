@@ -33,4 +33,5 @@ base64 = "0.23.1"
 tauri-plugin-updater = "2.11.0"
 tauri-plugin-process = "2.3.1"
 sysinfo = { version = "0.38.4", default-features = false, features = ["system"] }
+tauri-plugin-window-state = "2.4.1"
 

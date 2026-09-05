@@ -70,5 +70,5 @@ export function useLibrary() {
     return () => window.removeEventListener("focus", onFocus);
   }, []);
 
-  return { result, status, error, refresh };
+  return { result, status, error, refresh, applyResult: setResult };
 }

@@ -52,6 +52,25 @@ L'appartenance est stockée sur la liste (`collections.json`), pas sur le jeu :
 chaque analyse reconstruit la bibliothèque depuis les launchers, donc tout ce
 qui serait porté par un `Game` disparaîtrait avec elle.
 
+### Historique de jeu
+
+Aucune boutique n'expose localement le temps de jeu, et seule Steam donne une
+date de dernière session. GAMLIB tient donc le sien : chaque jeu installé a un
+dossier, donc un processus dont l'exécutable est sous ce dossier *est* ce jeu
+qui tourne. La méthode vaut pour les quatre plateformes, sans authentification,
+et donne la dernière session comme le temps cumulé. Steam reste la référence
+quand son horodatage est plus récent.
+
+### Favoris, jeux masqués, raccourcis
+
+Le clic droit sur un jeu permet de le marquer favori ou de le masquer. Les jeux
+masqués disparaissent de toutes les vues sauf « Masqués », qui n'apparaît que
+s'il y en a. Comme les listes, ces marques vivent dans leur propre fichier
+(`flags.json`) : chaque sync reconstruit la bibliothèque depuis les launchers.
+
+Au clavier : `/` pour la recherche, flèches pour parcourir la grille, Entrée pour
+lancer, Échap pour quitter un champ.
+
 ### Jaquettes
 
 Trois sources, aucune ne demandant de clé d'API ni de compte :
@@ -127,6 +146,8 @@ un asset de la release **la plus récente** : l'updater le lit via
 - `src-tauri/src/artwork.rs` — jaquettes, cache disque, servies via le
   protocole `asset` de Tauri (la CSP reste fermée aux hôtes distants).
 - `src-tauri/src/collections.rs` — les listes de l'utilisateur.
+- `src-tauri/src/playtime.rs` — sessions de jeu, par surveillance des processus.
+- `src-tauri/src/flags.rs` — favoris et jeux masqués.
 - `src/` — React + Tailwind. `types.ts` est le miroir de `models.rs`.
 
 ## Pas encore fait

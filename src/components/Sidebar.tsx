@@ -14,6 +14,7 @@ import {
   type Selection,
   type SortKey,
 } from "../types";
+import { SEARCH_INPUT_ID } from "../hooks/useGridKeys";
 import { PlatformDot } from "./PlatformBadge";
 
 interface Props {
@@ -42,6 +43,8 @@ interface Props {
   /** Unix epoch seconds of the last completed sync, if any. */
   syncedAt: number | null;
   errors: ScanError[];
+  /** Total hidden games, counted outside the current view. */
+  hiddenCount: number;
   /** Set only when a newer release is waiting. */
   updateVersion: string | null;
   updateDownloading: boolean;
@@ -194,6 +197,7 @@ export function Sidebar({
   onSync,
   syncedAt,
   errors,
+  hiddenCount,
   updateVersion,
   updateDownloading,
   updateProgress,
@@ -238,10 +242,11 @@ export function Sidebar({
         </div>
 
         <input
+          id={SEARCH_INPUT_ID}
           type="search"
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
-          placeholder="Rechercher…"
+          placeholder="Rechercher…  (/)"
           className="w-full rounded-md border border-line bg-surface-2 px-3 py-1.5 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
         />
 
@@ -273,6 +278,22 @@ export function Sidebar({
           active={active === "all"}
           onSelect={() => onSelectionChange({ kind: "all" })}
         />
+        <GroupRow
+          label="Favoris"
+          count={games.filter((game) => game.favorite).length}
+          active={active === "favorites"}
+          onSelect={() => onSelectionChange({ kind: "favorites" })}
+        />
+        {/* Only worth a row once something is actually hidden: it is the one
+            view that reaches games every other view leaves out. */}
+        {hiddenCount > 0 && (
+          <GroupRow
+            label="Masqués"
+            count={hiddenCount}
+            active={active === "hidden"}
+            onSelect={() => onSelectionChange({ kind: "hidden" })}
+          />
+        )}
 
         <SectionLabel
           action={{
