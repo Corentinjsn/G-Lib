@@ -5,7 +5,7 @@
 //! hundreds of appids, most of them DLC and tools, and re-asking the store
 //! about them on every launch would be both slow and rude.
 
-use crate::models::ScanResult;
+use crate::models::{ScanResult, SCHEMA_VERSION};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -23,9 +23,11 @@ pub fn covers_dir(data_dir: &Path) -> PathBuf {
     data_dir.join("covers")
 }
 
+/// The last scan, or nothing if it was written by a different shape.
 pub fn load(data_dir: &Path) -> Option<ScanResult> {
     let text = std::fs::read_to_string(library_file(data_dir)).ok()?;
-    serde_json::from_str(&text).ok()
+    let cached: ScanResult = serde_json::from_str(&text).ok()?;
+    (cached.schema_version == SCHEMA_VERSION).then_some(cached)
 }
 
 pub fn save(data_dir: &Path, result: &ScanResult) -> Result<()> {

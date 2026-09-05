@@ -104,7 +104,14 @@ bun run tauri dev      # lance l'app
 bun run tauri build    # produit le .msi
 ```
 
-Tests des scanners, sur des fixtures réelles (`src-tauri/tests/fixtures/`) :
+Tests. Le frontend couvre la logique pure — filtrage, tri, formatage — extraite
+dans `src/lib/` précisément pour être exerçable hors React :
+
+```bash
+bun test
+```
+
+Côté Rust, sur des fixtures réelles (`src-tauri/tests/fixtures/`) :
 
 ```bash
 cd src-tauri
@@ -148,7 +155,12 @@ un asset de la release **la plus récente** : l'updater le lit via
 - `src-tauri/src/collections.rs` — les listes de l'utilisateur.
 - `src-tauri/src/playtime.rs` — sessions de jeu, par surveillance des processus.
 - `src-tauri/src/flags.rs` — favoris et jeux masqués.
+- `src/lib/library.ts` — filtrage et tri de la bibliothèque, sans React.
 - `src/` — React + Tailwind. `types.ts` est le miroir de `models.rs`.
+
+Le cache de bibliothèque porte un `SCHEMA_VERSION` : un fichier écrit par une
+version antérieure du modèle est écarté volontairement, plutôt que de rater sa
+désérialisation et d'être perdu en silence.
 
 ## Pas encore fait
 
