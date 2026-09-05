@@ -1,7 +1,7 @@
 import { useState, type MouseEvent } from "react";
 import { coverUrl } from "../lib/api";
 import { PLATFORM_COLORS, PLATFORM_LABELS, type Game } from "../types";
-import { PlatformBadge } from "./PlatformBadge";
+import { BADGE_BOX, PlatformBadge } from "./PlatformBadge";
 
 interface Props {
   game: Game;
@@ -106,9 +106,12 @@ export function GameCard({
             event.stopPropagation();
             onToggleFavorite();
           }}
+          // Sans cela, deux clics rapides pour poser puis retirer l'étoile
+          // atteignent le double-clic de la carte et lancent le jeu.
+          onDoubleClick={(event) => event.stopPropagation()}
           aria-label={game.favorite ? "Retirer des favoris" : "Mettre en favori"}
           title={game.favorite ? "Retirer des favoris" : "Mettre en favori"}
-          className={`rounded-md bg-surface-0/85 px-1.5 py-0.5 text-[13px] leading-none backdrop-blur-sm transition ${
+          className={`${BADGE_BOX} text-[13px] leading-none transition ${
             game.favorite
               ? "text-yellow-400"
               : "text-ink-faint opacity-0 group-hover:opacity-100 hover:text-yellow-400"
@@ -121,7 +124,7 @@ export function GameCard({
           <span
             title="Mise à jour en attente"
             aria-label="Mise à jour en attente"
-            className="rounded-md bg-surface-0/85 px-1.5 py-0.5 text-[11px] leading-none text-accent backdrop-blur-sm"
+            className={`${BADGE_BOX} text-[11px] leading-none text-accent`}
           >
             ↻
           </span>
@@ -130,7 +133,7 @@ export function GameCard({
           <span
             title="Possédé, non installé"
             aria-label="Possédé, non installé"
-            className="rounded-md bg-surface-0/85 px-1.5 py-0.5 text-[11px] leading-none text-ink-muted backdrop-blur-sm"
+            className={`${BADGE_BOX} text-[11px] leading-none text-ink-muted`}
           >
             ↓
           </span>

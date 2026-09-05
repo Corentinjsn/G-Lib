@@ -330,6 +330,8 @@ export default function App() {
     selectedId,
     onSelect: setSelectedId,
     onLaunch: handleLaunch,
+    onToggleFavorite: (game: Game) =>
+      void toggleFlag(game, "favorite", !game.favorite),
     gridRef: gridScroll,
     // A context menu or a dialog owns the keyboard while it is open.
     enabled: menu === null && dialog === null,

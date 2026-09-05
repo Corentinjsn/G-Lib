@@ -56,6 +56,68 @@
   input {
     user-select: text;
   }
+
+  /* The webview draws its own clear button inside a search field, at its own
+     size and in its own place. It collided with the shortcut hint, so the
+     field carries a button of ours instead. */
+  input[type="search"]::-webkit-search-cancel-button,
+  input[type="search"]::-webkit-search-decoration {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+}
+
+/* The mark, during an update.
+   The three cards fan open and closed while the G holds the centre. Each group
+   turns about the same low point between the cards, so they move like a hand
+   of cards rather than three shapes drifting apart. */
+.logo-card-left,
+.logo-card-right,
+.logo-card-front {
+  transform-box: view-box;
+  transform-origin: 75px 96px;
+}
+
+.logo-card-left {
+  animation: gamlib-fan-left 2.6s ease-in-out infinite;
+}
+
+.logo-card-right {
+  animation: gamlib-fan-right 2.6s ease-in-out infinite;
+}
+
+.logo-card-front {
+  animation: gamlib-front 2.6s ease-in-out infinite;
+}
+
+@keyframes gamlib-fan-left {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-11deg);
+  }
+}
+
+@keyframes gamlib-fan-right {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(11deg);
+  }
+}
+
+@keyframes gamlib-front {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-3px) scale(1.03);
+  }
 }
 
 /* The splash logo, breathing.
@@ -95,6 +157,9 @@
 
 /* Motion is decoration here; anyone who asked for less gets a still logo. */
 @media (prefers-reduced-motion: reduce) {
+  .logo-card-left,
+  .logo-card-right,
+  .logo-card-front,
   .logo-breathe,
   .logo-halo {
     animation: none;

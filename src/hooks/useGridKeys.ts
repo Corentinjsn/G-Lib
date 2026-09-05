@@ -9,6 +9,7 @@ interface Options {
   selectedId: string | null;
   onSelect: (id: string) => void;
   onLaunch: (game: Game) => void;
+  onToggleFavorite: (game: Game) => void;
   /** The scroll container holding the grid, used to count its columns. */
   gridRef: RefObject<HTMLElement | null>;
   /** Suspended while a menu or dialog owns the keyboard. */
@@ -40,6 +41,7 @@ export function useGridKeys({
   selectedId,
   onSelect,
   onLaunch,
+  onToggleFavorite,
   gridRef,
   enabled,
 }: Options) {
@@ -91,6 +93,15 @@ export function useGridKeys({
         return;
       }
 
+      // Marking favourites is a sorting pass over a whole library: doing it
+      // from the keyboard while arrowing through the grid beats aiming at a
+      // star on every cover.
+      if ((event.key === "f" || event.key === "F") && index >= 0) {
+        event.preventDefault();
+        onToggleFavorite(games[index]);
+        return;
+      }
+
       const columns = columnCount(gridRef.current);
       const step: Record<string, number> = {
         ArrowRight: 1,
@@ -122,5 +133,5 @@ export function useGridKeys({
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [games, selectedId, onSelect, onLaunch, gridRef, enabled]);
+  }, [games, selectedId, onSelect, onLaunch, onToggleFavorite, gridRef, enabled]);
 }
