@@ -52,9 +52,26 @@ export function useGridKeys({
         target instanceof HTMLTextAreaElement ||
         target?.isContentEditable === true;
 
-      // Escape leaves a field rather than being swallowed by it.
       if (typing) {
+        // Escape leaves a field rather than being swallowed by it.
         if (event.key === "Escape") target?.blur();
+
+        // Type, then Enter, then playing: that sequence is the whole point of
+        // a launcher, and it has to work without ever leaving the search box.
+        if (target?.id === SEARCH_INPUT_ID && games.length > 0) {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            onSelect(games[0].id);
+            onLaunch(games[0]);
+          }
+          // Down arrow steps out of the field into the results, so the search
+          // is a way in to the grid rather than a dead end.
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            target.blur();
+            onSelect(games[0].id);
+          }
+        }
         return;
       }
       if (!enabled) return;

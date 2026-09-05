@@ -9,6 +9,7 @@ interface Props {
   onClose: () => void;
   onLaunch: () => void;
   onOpenFolder: () => void;
+  onToggleFavorite: () => void;
 }
 
 function Field({ label, value }: { label: string; value: string }) {
@@ -24,7 +25,13 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function GameDetail({ game, onClose, onLaunch, onOpenFolder }: Props) {
+export function GameDetail({
+  game,
+  onClose,
+  onLaunch,
+  onOpenFolder,
+  onToggleFavorite,
+}: Props) {
   const art = coverUrl(game.coverPath);
   const size = formatSize(game.sizeOnDisk);
   const lastPlayed = formatLastPlayed(game.lastPlayed);
@@ -39,7 +46,25 @@ export function GameDetail({ game, onClose, onLaunch, onOpenFolder }: Props) {
           <h2 className="text-base leading-tight font-semibold text-ink">
             {game.name}
           </h2>
-          <PlatformBadge platform={game.platform} />
+          {/* The panel said everything about the game except whether it was a
+              favourite — the one thing the user had set themselves. */}
+          <div className="flex items-center gap-2">
+            <PlatformBadge platform={game.platform} />
+            <button
+              type="button"
+              onClick={onToggleFavorite}
+              title={
+                game.favorite ? "Retirer des favoris" : "Mettre en favori"
+              }
+              className={`rounded-md px-1.5 py-1 text-[13px] leading-none transition hover:bg-surface-2 ${
+                game.favorite
+                  ? "text-yellow-400"
+                  : "text-ink-faint hover:text-yellow-400"
+              }`}
+            >
+              {game.favorite ? "★" : "☆"}
+            </button>
+          </div>
         </div>
         <button
           type="button"

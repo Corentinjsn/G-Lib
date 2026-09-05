@@ -79,8 +79,11 @@ masqués disparaissent de toutes les vues sauf « Masqués », qui n'apparaît q
 s'il y en a. Comme les listes, ces marques vivent dans leur propre fichier
 (`flags.json`) : chaque sync reconstruit la bibliothèque depuis les launchers.
 
-Au clavier : `/` pour la recherche, flèches pour parcourir la grille, Entrée pour
-lancer, Échap pour quitter un champ.
+Au clavier : `/` pour la recherche, puis Entrée pour lancer le premier
+résultat sans quitter le champ — le nom du jeu visé est affiché sous la
+recherche, pour que le raccourci ne soit jamais un pari. Flèche bas pour
+passer du champ à la grille, flèches pour la parcourir, Entrée pour lancer,
+Échap pour sortir du champ.
 
 ### Jaquettes
 

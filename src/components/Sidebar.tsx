@@ -40,6 +40,8 @@ interface Props {
   onInstallFilterChange: (filter: InstallFilter) => void;
   installCounts: Record<InstallFilter, number>;
   query: string;
+  /** Name of the game Enter would start, so the shortcut is never a guess. */
+  enterTarget: string | null;
   onQueryChange: (query: string) => void;
   sort: SortKey;
   onSortChange: (sort: SortKey) => void;
@@ -204,6 +206,7 @@ export function Sidebar({
   onInstallFilterChange,
   installCounts,
   query,
+  enterTarget,
   onQueryChange,
   sort,
   onSortChange,
@@ -293,6 +296,15 @@ export function Sidebar({
             </span>
           )}
         </div>
+
+        {/* Naming what Enter will start removes the guesswork: the shortcut is
+            only worth using if you know where it lands. */}
+        {query !== "" && enterTarget && (
+          <p className="-mt-1.5 flex items-center gap-1.5 px-0.5 text-[11px] text-ink-faint">
+            <Kbd>↵</Kbd>
+            <span className="truncate">{enterTarget}</span>
+          </p>
+        )}
 
         {/* Owned games outnumber installed ones several times over, so this
             decides what the whole sidebar is about. */}

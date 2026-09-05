@@ -96,27 +96,27 @@ export function GameCard({
         <PlatformBadge platform={game.platform} />
       </div>
 
-      {/* Marking a favourite is frequent enough to deserve the cover itself,
-          rather than a trip through the context menu. Filled stars stay on
-          show; the empty one only appears under the pointer. */}
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation();
-          onToggleFavorite();
-        }}
-        aria-label={game.favorite ? "Retirer des favoris" : "Mettre en favori"}
-        title={game.favorite ? "Retirer des favoris" : "Mettre en favori"}
-        className={`absolute bottom-1.5 left-1.5 rounded-md bg-surface-0/85 px-1.5 py-0.5 text-[13px] leading-none backdrop-blur-sm transition ${
-          game.favorite
-            ? "text-yellow-400"
-            : "text-ink-faint opacity-0 group-hover:opacity-100 hover:text-yellow-400"
-        }`}
-      >
-        {game.favorite ? "★" : "☆"}
-      </button>
-
+      {/* Everything lives along the top edge: the hover overlay fills the
+          bottom of the card with the title and the play button, so anything
+          down there would be buried the moment the pointer arrives. */}
       <div className="absolute top-1.5 right-1.5 flex flex-col items-end gap-1">
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggleFavorite();
+          }}
+          aria-label={game.favorite ? "Retirer des favoris" : "Mettre en favori"}
+          title={game.favorite ? "Retirer des favoris" : "Mettre en favori"}
+          className={`rounded-md bg-surface-0/85 px-1.5 py-0.5 text-[13px] leading-none backdrop-blur-sm transition ${
+            game.favorite
+              ? "text-yellow-400"
+              : "text-ink-faint opacity-0 group-hover:opacity-100 hover:text-yellow-400"
+          }`}
+        >
+          {game.favorite ? "★" : "☆"}
+        </button>
+
         {game.needsUpdate && (
           <span
             title="Mise à jour en attente"
