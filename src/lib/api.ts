@@ -11,6 +11,9 @@ export const scanLibrary = () => invoke<ScanResult>("scan_library");
 /** Resolve owned Steam games and download any missing covers. */
 export const fetchCatalog = () => invoke<ScanResult>("fetch_catalog");
 
+/** Re-reads the session log without rescanning the launchers. */
+export const refreshPlaytime = () => invoke<ScanResult>("refresh_playtime");
+
 export const launchGame = (id: string) => invoke<void>("launch_game", { id });
 
 export const openInstallDir = (id: string) =>

@@ -41,8 +41,12 @@ pub struct Game {
     /// Only meaningful when installed.
     pub install_dir: Option<PathBuf>,
     pub size_on_disk: Option<u64>,
-    /// Unix epoch seconds. Steam only for now.
+    /// Unix epoch seconds of the last launch, from the store when it says so
+    /// and from our own session tracking otherwise.
     pub last_played: Option<i64>,
+    /// Seconds played, as measured by GAMLIB itself. No store exposes this
+    /// locally, so it only counts sessions seen since the app was installed.
+    pub playtime_seconds: Option<u64>,
     /// Absolute path to the cached cover on disk, once fetched.
     pub cover_path: Option<PathBuf>,
     /// Where the cover can be downloaded, best first, when the scanner already
@@ -69,6 +73,7 @@ impl Game {
             install_dir: None,
             size_on_disk: None,
             last_played: None,
+            playtime_seconds: None,
             cover_path: None,
             cover_urls: Vec::new(),
             action_uri: action_uri.into(),

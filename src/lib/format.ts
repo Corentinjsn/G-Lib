@@ -21,6 +21,15 @@ export function formatLastPlayed(epochSeconds: number | null): string | null {
   });
 }
 
+/** Play time, rounded the way a launcher shows it. */
+export function formatPlaytime(seconds: number | null): string | null {
+  if (!seconds || seconds < 60) return null;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes} min`;
+  const hours = seconds / 3600;
+  return hours < 10 ? `${hours.toFixed(1)} h` : `${Math.round(hours)} h`;
+}
+
 /** Coarse "how long ago", for the sync stamp. */
 export function formatAgo(epochSeconds: number | null): string | null {
   if (!epochSeconds || epochSeconds <= 0) return null;
