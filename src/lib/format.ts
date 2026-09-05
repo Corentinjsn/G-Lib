@@ -21,6 +21,22 @@ export function formatLastPlayed(epochSeconds: number | null): string | null {
   });
 }
 
+/** Coarse "how long ago", for the sync stamp. */
+export function formatAgo(epochSeconds: number | null): string | null {
+  if (!epochSeconds || epochSeconds <= 0) return null;
+
+  const seconds = Math.max(0, Math.floor(Date.now() / 1000) - epochSeconds);
+  if (seconds < 90) return "à l'instant";
+
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `il y a ${minutes} min`;
+
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `il y a ${hours} h`;
+
+  return formatLastPlayed(epochSeconds);
+}
+
 /** Case- and accent-insensitive, so "pokemon" finds "Pokémon". */
 export function normalize(value: string): string {
   return value

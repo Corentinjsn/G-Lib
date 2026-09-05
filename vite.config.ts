@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -5,9 +6,14 @@ import tailwindcss from "@tailwindcss/vite";
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
 
+// One version number for the whole project: the sidebar reads it from here
+// rather than carrying a literal that drifts at the next release.
+const { version } = JSON.parse(readFileSync("./package.json", "utf8"));
+
 // https://vite.dev/config/
 export default defineConfig(async () => ({
   plugins: [react(), tailwindcss()],
+  define: { __APP_VERSION__: JSON.stringify(version) },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //

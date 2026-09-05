@@ -1,4 +1,5 @@
-import { useState, type MouseEvent } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
+import { formatAgo } from "../lib/format";
 import {
   INSTALL_FILTERS,
   INSTALL_FILTER_LABELS,
@@ -36,9 +37,23 @@ interface Props {
   onQueryChange: (query: string) => void;
   sort: SortKey;
   onSortChange: (sort: SortKey) => void;
-  scanning: boolean;
-  onRefresh: () => void;
+  syncing: boolean;
+  onSync: () => void;
+  /** Unix epoch seconds of the last completed sync, if any. */
+  syncedAt: number | null;
   errors: ScanError[];
+}
+
+/**
+ * Re-renders once a minute so the sync stamp does not sit on "à l'instant"
+ * for an app that has been open all afternoon.
+ */
+function useMinuteTick() {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setTick((n) => n + 1), 60_000);
+    return () => clearInterval(timer);
+  }, []);
 }
 
 function SectionLabel({
@@ -170,11 +185,14 @@ export function Sidebar({
   onQueryChange,
   sort,
   onSortChange,
-  scanning,
-  onRefresh,
+  syncing,
+  onSync,
+  syncedAt,
   errors,
 }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  useMinuteTick();
+  const lastSync = formatAgo(syncedAt);
 
   const toggle = (key: string) =>
     setExpanded((current) => {
@@ -207,7 +225,7 @@ export function Sidebar({
           <h1 className="font-display text-2xl leading-none font-semibold tracking-tight text-ink">
             Gamlib
           </h1>
-          <span className="text-[10px] text-ink-faint">v0.1</span>
+          <span className="text-[10px] text-ink-faint">v{__APP_VERSION__}</span>
         </div>
 
         <input
@@ -341,14 +359,22 @@ export function Sidebar({
           </ul>
         )}
 
-        <button
-          type="button"
-          onClick={onRefresh}
-          disabled={scanning}
-          className="w-full rounded-md border border-line bg-surface-2 py-2 text-sm text-ink-muted transition hover:border-accent hover:text-ink disabled:cursor-progress disabled:opacity-60"
-        >
-          {scanning ? "Analyse en cours…" : "Réanalyser"}
-        </button>
+        <div className="flex flex-col gap-1">
+          <button
+            type="button"
+            onClick={onSync}
+            disabled={syncing}
+            title="La synchronisation se fait aussi automatiquement à chaque démarrage."
+            className="w-full rounded-md border border-line bg-surface-2 py-2 text-sm text-ink-muted transition hover:border-accent hover:text-ink disabled:cursor-progress disabled:opacity-60"
+          >
+            {syncing ? "Synchronisation…" : "Sync"}
+          </button>
+          {lastSync && !syncing && (
+            <p className="text-center text-[10px] text-ink-faint">
+              Dernière sync {lastSync}
+            </p>
+          )}
+        </div>
       </div>
     </aside>
   );
