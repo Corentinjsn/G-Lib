@@ -9,11 +9,12 @@ mod playtime;
 mod scanners;
 mod steam_store;
 mod vdf;
+mod watcher;
 
 use models::{Game, ScanResult};
 use std::path::PathBuf;
 use std::sync::Mutex;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 /// The most recent scan, so `launch_game` can resolve an id to its URI without
 /// trusting anything the frontend hands back.
@@ -52,6 +53,17 @@ fn load_cached_library(
     artwork::attach_cached(&mut cached.games, &cache::covers_dir(&dir));
     *library.0.lock().map_err(|_| "bibliotheque verrouillee")? = cached.clone();
     Ok(Some(cached))
+}
+
+/// One offline pass over the launchers, with the user's own marks folded
+/// back in. Shared by the sync command and by the watcher.
+fn rescan(dir: &std::path::Path) -> ScanResult {
+    let mut result = scanners::scan_all();
+    playtime::apply(&mut result.games, &playtime::load(dir));
+    flags::apply(&mut result.games, &flags::load(dir));
+    artwork::attach_cached(&mut result.games, &cache::covers_dir(dir));
+    let _ = cache::save(dir, &result);
+    result
 }
 
 /// Re-read every launcher. Filesystem and registry work, so it runs off the UI thread.
@@ -241,6 +253,20 @@ pub fn run() {
                         .unwrap_or_default()
                 });
             }
+
+            // A game appearing or disappearing on disk should reach the grid on
+            // its own; being told to press Sync is not an answer.
+            if let Ok(dir) = app.path().app_data_dir() {
+                let handle = app.handle().clone();
+                watcher::watch(move || {
+                    let result = rescan(&dir);
+                    if let Ok(mut library) = handle.state::<Library>().0.lock() {
+                        *library = result.clone();
+                    }
+                    let _ = handle.emit("library-changed", result);
+                });
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

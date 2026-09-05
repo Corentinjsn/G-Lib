@@ -38,6 +38,17 @@ La grille s'ouvre sur les jeux installés ; un sélecteur donne accès à
 « Tous » et « À installer ». Les jeux non installés sont grisés et portent un
 badge ↓.
 
+### Bibliothèque vivante
+
+Installer ou supprimer un jeu réécrit un fichier dans un dossier déjà connu :
+un manifeste `.acf` pour Steam, un `.item` pour Epic. Ces dossiers sont
+surveillés, donc un jeu désinstallé perd simplement sa carte, sans qu'il faille
+penser à cliquer sur Sync.
+
+EA et Ubisoft déclarent leurs jeux dans le registre plutôt que dans des
+fichiers : eux sont rattrapés par l'analyse qui a lieu au retour sur la
+fenêtre.
+
 ### Navigation et listes
 
 La barre latérale est une navigation à la Steam : « Tous les jeux », vos listes,
@@ -155,6 +166,7 @@ un asset de la release **la plus récente** : l'updater le lit via
 - `src-tauri/src/collections.rs` — les listes de l'utilisateur.
 - `src-tauri/src/playtime.rs` — sessions de jeu, par surveillance des processus.
 - `src-tauri/src/flags.rs` — favoris et jeux masqués.
+- `src-tauri/src/watcher.rs` — surveillance des dossiers des launchers.
 - `src/lib/library.ts` — filtrage et tri de la bibliothèque, sans React.
 - `src/` — React + Tailwind. `types.ts` est le miroir de `models.rs`.
 
