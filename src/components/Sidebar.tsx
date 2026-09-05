@@ -379,8 +379,10 @@ export function Sidebar({
           return (
             <div key={platform}>
               <GroupRow
-                label=""
-                title={PLATFORM_LABELS[platform]}
+                // Nommée ici, contrairement aux badges de la grille : une
+                // barre de navigation se lit ligne à ligne, et le nom écrit
+                // vaut mieux qu'un logo à deviner.
+                label={PLATFORM_LABELS[platform]}
                 count={String(list.length)}
                 active={active === key}
                 expanded={expanded.has(key)}
