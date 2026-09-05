@@ -5,6 +5,9 @@ export interface MenuItem {
   action: () => void;
   /** Renders a checkbox: used for list membership, which is a toggle. */
   checked?: boolean;
+  /** Renders a star instead of a checkbox. A favourite is not a category
+      one ticks; the mark is the point. */
+  star?: boolean;
   /** Draw a divider above this item. */
   divider?: boolean;
 }
@@ -66,6 +69,16 @@ export function ContextMenu({ state, onClose }: Props) {
             item.divider ? "mt-1 border-t border-line pt-2" : ""
           }`}
         >
+          {item.star !== undefined && (
+            <span
+              aria-hidden
+              className={`w-3.5 shrink-0 text-center text-[13px] leading-none ${
+                item.star ? "text-yellow-400" : "text-ink-faint"
+              }`}
+            >
+              {item.star ? "★" : "☆"}
+            </span>
+          )}
           {item.checked !== undefined && (
             <span
               aria-hidden

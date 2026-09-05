@@ -8,6 +8,7 @@ interface Props {
   onSelect: (game: Game) => void;
   onLaunch: (game: Game) => void;
   onContextMenu: (game: Game, event: MouseEvent) => void;
+  onToggleFavorite: (game: Game) => void;
 }
 
 export function GameGrid({
@@ -16,6 +17,7 @@ export function GameGrid({
   onSelect,
   onLaunch,
   onContextMenu,
+  onToggleFavorite,
 }: Props) {
   return (
     <div
@@ -30,6 +32,7 @@ export function GameGrid({
           onSelect={() => onSelect(game)}
           onLaunch={() => onLaunch(game)}
           onContextMenu={(event) => onContextMenu(game, event)}
+          onToggleFavorite={() => onToggleFavorite(game)}
         />
       ))}
     </div>

@@ -16,6 +16,10 @@ export const refreshPlaytime = () => invoke<ScanResult>("refresh_playtime");
 
 export const launchGame = (id: string) => invoke<void>("launch_game", { id });
 
+/** Hands the game to its launcher's uninstall flow. */
+export const uninstallGame = (id: string) =>
+  invoke<void>("uninstall_game", { id });
+
 export const openInstallDir = (id: string) =>
   invoke<void>("open_install_dir", { id });
 

@@ -161,6 +161,16 @@ fn launch_game(library: State<'_, Library>, id: String) -> Result<(), String> {
     launcher::launch_uri(&game.action_uri).map_err(|e| format!("{e:#}"))
 }
 
+/// The uninstall flow belongs to the launcher; we only hand the game over.
+#[tauri::command]
+fn uninstall_game(library: State<'_, Library>, id: String) -> Result<(), String> {
+    let game = find_game(&library, &id)?;
+    let entry = game
+        .uninstall
+        .ok_or_else(|| format!("{} ne publie pas de desinstallation", game.name))?;
+    launcher::uninstall(&entry).map_err(|e| format!("{e:#}"))
+}
+
 #[tauri::command]
 fn open_install_dir(library: State<'_, Library>, id: String) -> Result<(), String> {
     let game = find_game(&library, &id)?;
@@ -239,6 +249,7 @@ pub fn run() {
             fetch_catalog,
             launch_game,
             open_install_dir,
+            uninstall_game,
             refresh_playtime,
             list_flags,
             set_game_flag,

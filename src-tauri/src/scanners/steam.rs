@@ -22,6 +22,11 @@ const BLOCKED_APPIDS: &[&str] = &[
 /// `StateFlags` bit meaning "fully installed".
 const STATE_FULLY_INSTALLED: u64 = 4;
 
+/// `StateFlags` bit meaning the client has an update waiting. It sits
+/// alongside the installed bit rather than replacing it: the game is still
+/// playable, just behind.
+const STATE_UPDATE_REQUIRED: u64 = 2;
+
 /// Locate the Steam client, preferring the registry over a hardcoded path.
 pub fn steam_root() -> Option<PathBuf> {
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
@@ -113,6 +118,8 @@ pub fn game_from_manifest(text: &str, library: &Path) -> Option<Game> {
         install_dir,
         format!("steam://rungameid/{appid}"),
     );
+    game.needs_update = flags & STATE_UPDATE_REQUIRED != 0;
+    game.uninstall = Some(format!("steam://uninstall/{appid}"));
     game.size_on_disk = state.get_u64("SizeOnDisk").filter(|&s| s > 0);
     game.last_played = state.get_i64("LastPlayed").filter(|&t| t > 0);
     Some(game)

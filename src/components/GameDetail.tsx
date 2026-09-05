@@ -33,7 +33,9 @@ export function GameDetail({ game, onClose, onLaunch, onOpenFolder }: Props) {
   return (
     <aside className="flex w-80 shrink-0 flex-col border-l border-line bg-surface-1">
       <div className="flex items-start justify-between gap-2 p-4 pb-3">
-        <div className="flex flex-col gap-2">
+        {/* items-start : sans quoi le badge s etire sur la largeur du titre
+            et son fond ressemble a un champ vide. */}
+        <div className="flex flex-col items-start gap-2">
           <h2 className="text-base leading-tight font-semibold text-ink">
             {game.name}
           </h2>
@@ -84,7 +86,13 @@ export function GameDetail({ game, onClose, onLaunch, onOpenFolder }: Props) {
         <div className="flex flex-col gap-3 border-t border-line pt-4">
           <Field
             label="État"
-            value={game.installed ? "Installé" : "Possédé, non installé"}
+            value={
+              game.installed
+                ? game.needsUpdate
+                  ? "Installé — mise à jour en attente"
+                  : "Installé"
+                : "Possédé, non installé"
+            }
           />
           {size && <Field label="Taille sur disque" value={size} />}
           {lastPlayed && <Field label="Dernière session" value={lastPlayed} />}

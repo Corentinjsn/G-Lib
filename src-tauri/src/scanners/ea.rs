@@ -148,6 +148,12 @@ pub fn scan() -> Result<Vec<Game>> {
                 format!("origin2://game/launch?offerIds={content_id}"),
             );
             game.size_on_disk = estimated_size(&entry);
+            // EA ne publie pas d'URI de desinstallation ; la ligne de
+            // commande laissee par l'installeur fait le meme travail.
+            game.uninstall = entry
+                .get_value::<String, _>("UninstallString")
+                .ok()
+                .filter(|s| !s.trim().is_empty());
             games.push(game);
         }
     }

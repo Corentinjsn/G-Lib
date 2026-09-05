@@ -9,6 +9,7 @@ interface Props {
   onSelect: () => void;
   onLaunch: () => void;
   onContextMenu: (event: MouseEvent) => void;
+  onToggleFavorite: () => void;
 }
 
 /**
@@ -43,6 +44,7 @@ export function GameCard({
   onSelect,
   onLaunch,
   onContextMenu,
+  onToggleFavorite,
 }: Props) {
   const [artBroken, setArtBroken] = useState(false);
   const art = artBroken ? null : coverUrl(game.coverPath);
@@ -94,25 +96,46 @@ export function GameCard({
         <PlatformBadge platform={game.platform} />
       </div>
 
-      {game.favorite && (
-        <span
-          title="Favori"
-          aria-label="Favori"
-          className="absolute bottom-1.5 left-1.5 rounded-md bg-surface-0/85 px-1.5 py-0.5 text-[11px] leading-none text-accent backdrop-blur-sm"
-        >
-          ★
-        </span>
-      )}
+      {/* Marking a favourite is frequent enough to deserve the cover itself,
+          rather than a trip through the context menu. Filled stars stay on
+          show; the empty one only appears under the pointer. */}
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          onToggleFavorite();
+        }}
+        aria-label={game.favorite ? "Retirer des favoris" : "Mettre en favori"}
+        title={game.favorite ? "Retirer des favoris" : "Mettre en favori"}
+        className={`absolute bottom-1.5 left-1.5 rounded-md bg-surface-0/85 px-1.5 py-0.5 text-[13px] leading-none backdrop-blur-sm transition ${
+          game.favorite
+            ? "text-yellow-400"
+            : "text-ink-faint opacity-0 group-hover:opacity-100 hover:text-yellow-400"
+        }`}
+      >
+        {game.favorite ? "★" : "☆"}
+      </button>
 
-      {!game.installed && (
-        <span
-          title="Possédé, non installé"
-          aria-label="Possédé, non installé"
-          className="absolute top-1.5 right-1.5 rounded-md bg-surface-0/85 px-1.5 py-0.5 text-[11px] leading-none text-ink-muted backdrop-blur-sm"
-        >
-          ↓
-        </span>
-      )}
+      <div className="absolute top-1.5 right-1.5 flex flex-col items-end gap-1">
+        {game.needsUpdate && (
+          <span
+            title="Mise à jour en attente"
+            aria-label="Mise à jour en attente"
+            className="rounded-md bg-surface-0/85 px-1.5 py-0.5 text-[11px] leading-none text-accent backdrop-blur-sm"
+          >
+            ↻
+          </span>
+        )}
+        {!game.installed && (
+          <span
+            title="Possédé, non installé"
+            aria-label="Possédé, non installé"
+            className="rounded-md bg-surface-0/85 px-1.5 py-0.5 text-[11px] leading-none text-ink-muted backdrop-blur-sm"
+          >
+            ↓
+          </span>
+        )}
+      </div>
 
       {/* Action affordance, revealed on hover so the art stays unobstructed. */}
       <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/90 via-black/30 to-transparent p-2 opacity-0 transition group-hover:opacity-100">
