@@ -1,3 +1,5 @@
+import { LogoMark } from "./LogoMark";
+
 export type StepState = "pending" | "active" | "done";
 
 export interface SplashStep {
@@ -47,14 +49,7 @@ export function Splash({
               className="logo-halo absolute size-20 rounded-full bg-accent blur-2xl"
             />
           )}
-          <img
-            src="/GAMLIB.png"
-            alt=""
-            draggable={false}
-            className={`relative size-20 object-contain ${
-              update ? "logo-breathe" : ""
-            }`}
-          />
+          <LogoMark className="relative size-20" animated={Boolean(update)} />
         </div>
         <h1 className="font-display text-4xl leading-none font-semibold tracking-tight text-ink">
           Gamlib

@@ -289,12 +289,25 @@ export function Sidebar({
             placeholder="Rechercher…"
             className="peer w-full rounded-md border border-line bg-surface-2 py-1.5 pr-9 pl-3 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
           />
-          {/* Hidden once the field is in use: the hint has done its job. */}
-          {query === "" && (
-            <span className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 peer-focus:hidden">
-              <Kbd>/</Kbd>
-            </span>
-          )}
+          {/* One slot, two jobs: the shortcut while the field is idle, the way
+              out of a search once there is one. */}
+          <span className="absolute top-1/2 right-2 flex -translate-y-1/2 items-center">
+            {query === "" ? (
+              <span className="pointer-events-none peer-focus:hidden">
+                <Kbd>/</Kbd>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onQueryChange("")}
+                aria-label="Effacer la recherche"
+                title="Effacer la recherche"
+                className="flex size-5 items-center justify-center rounded text-sm leading-none text-ink-faint transition hover:bg-surface-3 hover:text-ink"
+              >
+                ✕
+              </button>
+            )}
+          </span>
         </div>
 
         {/* Naming what Enter will start removes the guesswork: the shortcut is
