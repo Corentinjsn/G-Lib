@@ -52,6 +52,12 @@ pub struct Game {
     /// Where the cover can be downloaded, best first, when the scanner already
     /// knows. Saves the artwork pass a lookup it would otherwise repeat.
     pub cover_urls: Vec<String>,
+    /// The launcher reports a pending update for this installed game.
+    pub needs_update: bool,
+    /// Hands the game to its launcher's uninstall flow: a URI for the stores
+    /// that publish one, a command line for those that only leave an uninstall
+    /// entry behind. `None` where neither exists.
+    pub uninstall: Option<String>,
     /// Marked by the user. Set from `flags.json` after every scan, never by a
     /// scanner.
     pub favorite: bool,
@@ -79,6 +85,8 @@ impl Game {
             size_on_disk: None,
             last_played: None,
             playtime_seconds: None,
+            needs_update: false,
+            uninstall: None,
             favorite: false,
             hidden: false,
             cover_path: None,
@@ -119,7 +127,7 @@ impl Game {
 /// written by an older shape is then discarded on purpose, instead of failing
 /// to deserialize and being dropped in silence — which is what happened twice
 /// while the model was still moving.
-pub const SCHEMA_VERSION: u32 = 1;
+pub const SCHEMA_VERSION: u32 = 2;
 
 /// Result of a full scan. Per-platform failures are reported rather than
 /// propagated, so one missing launcher never costs us the other three.

@@ -76,6 +76,7 @@ pub fn scan() -> Result<Vec<Game>> {
             format!("uplay://launch/{install_id}/0"),
         );
         game.size_on_disk = uninstall.as_ref().and_then(estimated_size);
+        game.uninstall = Some(format!("uplay://uninstall/{install_id}"));
         games.push(game);
     }
 

@@ -11,6 +11,8 @@ function game(overrides: Partial<Game> & { id: string; name: string }): Game {
     sizeOnDisk: null,
     lastPlayed: null,
     playtimeSeconds: null,
+    needsUpdate: false,
+    uninstall: null,
     favorite: false,
     hidden: false,
     coverPath: null,

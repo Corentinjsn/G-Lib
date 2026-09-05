@@ -17,7 +17,12 @@ import { useCollections } from "./hooks/useCollections";
 import { useGridKeys } from "./hooks/useGridKeys";
 import { useLibrary } from "./hooks/useLibrary";
 import { useUpdate } from "./hooks/useUpdate";
-import { launchGame, openInstallDir, setGameFlag } from "./lib/api";
+import {
+  launchGame,
+  openInstallDir,
+  setGameFlag,
+  uninstallGame,
+} from "./lib/api";
 import {
   inInstallFilter,
   installCounts,
@@ -72,10 +77,12 @@ export default function App() {
   const collections = useCollections(showError);
   const update = useUpdate(showError);
 
-  /* The splash stays up until there is something to show. It waits on the
-     update check too, so a pending update is announced before the grid rather
-     than appearing under the user a second later. */
-  const ready = result !== null && update.phase !== "checking";
+  /* An update found at startup installs itself before anything is shown: the
+     restart would throw the library away anyway. The splash otherwise waits on
+     the first scan and on the update check. */
+  const updating =
+    update.phase === "downloading" || update.phase === "installed";
+  const ready = !updating && result !== null && update.phase !== "checking";
   const splashSteps: SplashStep[] = [
     {
       label: "Vérification des mises à jour",
@@ -171,9 +178,18 @@ export default function App() {
     }
   };
 
+  const handleUninstall = (game: Game) => {
+    setMenu(null);
+    // Le launcher demande sa propre confirmation ; en ajouter une ici ne
+    // ferait que doubler le même dialogue.
+    void run(uninstallGame(game.id), `Impossible de désinstaller ${game.name}`);
+  };
+
   const openGameMenu = (game: Game, event: MouseEvent) => {
     event.preventDefault();
-    setSelectedId(game.id);
+    // Volontairement sans sélection : ouvrir le panneau de détail rétrécit la
+    // grille et fait glisser les cartes sous un pointeur qui vient à peine de
+    // quitter celle qu'on visait.
     setMenu({
       x: event.clientX,
       y: event.clientY,
@@ -191,9 +207,18 @@ export default function App() {
               },
             ]
           : []),
+        // Absent pour Epic, qui ne publie aucune désinstallation.
+        ...(game.installed && game.uninstall
+          ? [
+              {
+                label: "Désinstaller…",
+                action: () => handleUninstall(game),
+              },
+            ]
+          : []),
         {
           label: "Favori",
-          checked: game.favorite,
+          star: game.favorite,
           divider: true,
           action: () => {
             void toggleFlag(game, "favorite", !game.favorite);
@@ -311,7 +336,16 @@ export default function App() {
   });
 
   if (!ready) {
-    return <Splash steps={splashSteps} />;
+    return (
+      <Splash
+        steps={splashSteps}
+        update={
+          updating
+            ? { version: update.version, progress: update.progress }
+            : undefined
+        }
+      />
+    );
   }
 
   return (
@@ -383,6 +417,9 @@ export default function App() {
               onSelect={(game) => setSelectedId(game.id)}
               onLaunch={handleLaunch}
               onContextMenu={openGameMenu}
+              onToggleFavorite={(game) =>
+                void toggleFlag(game, "favorite", !game.favorite)
+              }
             />
           ) : (
             <EmptyState scanning={status !== "idle"} />

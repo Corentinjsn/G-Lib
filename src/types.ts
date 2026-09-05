@@ -14,6 +14,11 @@ export interface Game {
   lastPlayed: number | null;
   /** Seconds played, as measured by GAMLIB itself. */
   playtimeSeconds: number | null;
+  /** The launcher reports a pending update for this installed game. */
+  needsUpdate: boolean;
+  /** Handed to the launcher's uninstall flow. Absent where the store
+      publishes none. */
+  uninstall: string | null;
   /** Marked by the user, not by any scanner. */
   favorite: boolean;
   /** Kept out of every view but the one that lists hidden games. */
