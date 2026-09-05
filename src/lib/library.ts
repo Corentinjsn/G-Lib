@@ -23,15 +23,16 @@ export interface View {
 }
 
 /**
- * The set a view draws from, before any filter.
- *
  * Hidden games are absent from everything but the view that lists them, so
  * this comes first: it decides which universe exists at all.
  */
+export function inUniverse(game: Game, selection: Selection): boolean {
+  return selection.kind === "hidden" ? game.hidden : !game.hidden;
+}
+
+/** The set a view draws from, before any filter. */
 export function universe(games: Game[], selection: Selection): Game[] {
-  return selection.kind === "hidden"
-    ? games.filter((game) => game.hidden)
-    : games.filter((game) => !game.hidden);
+  return games.filter((game) => inUniverse(game, selection));
 }
 
 export function inInstallFilter(game: Game, filter: InstallFilter): boolean {
@@ -77,6 +78,26 @@ export function compareGames(a: Game, b: Game, sort: SortKey): number {
     default:
       return a.name.localeCompare(b.name, "fr");
   }
+}
+
+/**
+ * Whether a game belongs to what the view is about, ignoring the text filter.
+ *
+ * This is what the detail panel is tied to: the panel describes something in
+ * the grid, so it has to close when that something leaves. The query is left
+ * out on purpose — the sidebar lists games it does not narrow, and a panel
+ * that shut itself the moment you clicked one of those would be worse than
+ * the problem it fixes.
+ */
+export function inScope(
+  game: Game,
+  view: Pick<View, "installFilter" | "selection" | "collections">,
+): boolean {
+  return (
+    inUniverse(game, view.selection) &&
+    inInstallFilter(game, view.installFilter) &&
+    inSelection(game, view.selection, view.collections)
+  );
 }
 
 /** Everything above, in the order that matters. Never mutates its input. */

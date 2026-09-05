@@ -27,6 +27,7 @@ import {
 } from "./lib/api";
 import {
   inInstallFilter,
+  inScope,
   installCounts,
   selectGames,
   universe,
@@ -145,6 +146,23 @@ export default function App() {
     () => allGames.find((game) => game.id === selectedId) ?? null,
     [allGames, selectedId],
   );
+  /* Le panneau de detail decrit un jeu de la grille. Quand ce jeu sort du
+     perimetre courant — autre categorie, autre plateforme, autre filtre
+     d'installation, ou parce qu'on vient de le masquer — le panneau part avec
+     lui. Il restait ouvert sur un jeu que la vue n'affichait plus. */
+  useEffect(() => {
+    if (!selected) return;
+    if (
+      !inScope(selected, {
+        installFilter,
+        selection,
+        collections: collections.collections,
+      })
+    ) {
+      setSelectedId(null);
+    }
+  }, [selected, installFilter, selection, collections.collections]);
+
   useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(null), 6000);
@@ -281,7 +299,25 @@ export default function App() {
     ...(game.installed
       ? [{ label: "Ouvrir le dossier", run: () => handleOpenFolder(game) }]
       : []),
-    { label: "Voir les détails", run: () => setSelectedId(game.id) },
+    {
+      label: "Voir les détails",
+      run: () => {
+        // La palette voit toute la bibliotheque. Ouvrir le detail d'un jeu que
+        // la vue courante exclut demande d'aller jusqu'a lui, sans quoi la
+        // regle ci-dessus refermerait le panneau aussitot.
+        if (
+          !inScope(game, {
+            installFilter,
+            selection,
+            collections: collections.collections,
+          })
+        ) {
+          setSelection({ kind: "all" });
+          setInstallFilter("all");
+        }
+        setSelectedId(game.id);
+      },
+    },
     {
       label: "Favori",
       star: game.favorite,
