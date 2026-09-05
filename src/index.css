@@ -57,3 +57,46 @@
     user-select: text;
   }
 }
+
+/* The splash logo, breathing.
+   An update is the one moment the window sits still with nothing to click, so
+   the mark moves instead: it says the application is working rather than
+   wedged. The halo is a separate layer so the logo itself keeps its own
+   colours. */
+@keyframes gamlib-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+@keyframes gamlib-halo {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(1.2);
+  }
+}
+
+.logo-breathe {
+  animation: gamlib-breathe 2.4s ease-in-out infinite;
+}
+
+.logo-halo {
+  animation: gamlib-halo 2.4s ease-in-out infinite;
+}
+
+/* Motion is decoration here; anyone who asked for less gets a still logo. */
+@media (prefers-reduced-motion: reduce) {
+  .logo-breathe,
+  .logo-halo {
+    animation: none;
+  }
+}

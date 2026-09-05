@@ -40,12 +40,22 @@ export function Splash({
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-surface-0">
       <div className="flex flex-col items-center gap-2">
-        <img
-          src="/GAMLIB.png"
-          alt=""
-          draggable={false}
-          className="size-20 object-contain"
-        />
+        <div className="relative flex size-20 items-center justify-center">
+          {update && (
+            <span
+              aria-hidden
+              className="logo-halo absolute size-20 rounded-full bg-accent blur-2xl"
+            />
+          )}
+          <img
+            src="/GAMLIB.png"
+            alt=""
+            draggable={false}
+            className={`relative size-20 object-contain ${
+              update ? "logo-breathe" : ""
+            }`}
+          />
+        </div>
         <h1 className="font-display text-4xl leading-none font-semibold tracking-tight text-ink">
           Gamlib
         </h1>
