@@ -52,7 +52,11 @@ export function Splash({
               className="logo-halo absolute size-20 rounded-full bg-accent blur-2xl"
             />
           )}
-          <LogoMark className="relative size-20" animated={Boolean(update)} />
+          {/* La creme du logo d'origine, que rien n'entoure ici. */}
+          <LogoMark
+            className="relative size-20 text-[#f6f4f0]"
+            animated={Boolean(update)}
+          />
         </div>
         <h1 className="font-display text-4xl leading-none font-semibold tracking-tight text-ink">
           Gamlib

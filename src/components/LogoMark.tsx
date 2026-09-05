@@ -9,6 +9,11 @@
  * Colours are the logo's own two, swapped for a dark background: the cards take
  * the cream that the G has in the original, and the G takes the ground colour —
  * exactly what the application icon does with its badge.
+ *
+ * The cards follow `currentColor`, so a caller sets the tone with a text colour
+ * and the mark sits at the same weight as whatever surrounds it. The stroke and
+ * the G stay on the ground colour: they are what keeps the three cards apart at
+ * any size.
  */
 export function LogoMark({
   className = "size-24",
@@ -17,7 +22,7 @@ export function LogoMark({
   className?: string;
   animated?: boolean;
 }) {
-  const skin = { fill: "#f6f4f0", stroke: "#0b0d12", strokeWidth: 3 };
+  const skin = { fill: "currentColor", stroke: "#0b0d12", strokeWidth: 3 };
 
   // The two behind are broad, squarer cards; the one in front is the narrow
   // stadium that carries the G. Getting that contrast right is what makes the
