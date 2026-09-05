@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Cles de signature des mises a jour : elles vivent hors du depot
+# (~/.gamlib/updater.key), ceci n'est qu'un garde-fou si l'une y atterrit.
+*.key
+updater.key*

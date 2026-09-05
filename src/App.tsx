@@ -4,8 +4,10 @@ import { GameDetail } from "./components/GameDetail";
 import { GameGrid } from "./components/GameGrid";
 import { NameDialog } from "./components/NameDialog";
 import { Sidebar } from "./components/Sidebar";
+import { Splash, type SplashStep } from "./components/Splash";
 import { useCollections } from "./hooks/useCollections";
 import { useLibrary } from "./hooks/useLibrary";
+import { useUpdate } from "./hooks/useUpdate";
 import { launchGame, openInstallDir } from "./lib/api";
 import { normalize } from "./lib/format";
 import {
@@ -53,6 +55,31 @@ export default function App() {
 
   const showError = useCallback((message: string) => setToast(message), []);
   const collections = useCollections(showError);
+  const update = useUpdate(showError);
+
+  /* The splash stays up until there is something to show. It waits on the
+     update check too, so a pending update is announced before the grid rather
+     than appearing under the user a second later. */
+  const ready = result !== null && update.phase !== "checking";
+  const splashSteps: SplashStep[] = [
+    {
+      label: "Vérification des mises à jour",
+      state: update.phase === "checking" ? "active" : "done",
+    },
+    {
+      label: "Lecture des launchers",
+      state: result !== null ? "done" : "active",
+    },
+    {
+      label: "Catalogue en ligne",
+      state:
+        status === "fetching-catalog"
+          ? "active"
+          : result !== null && status === "idle"
+            ? "done"
+            : "pending",
+    },
+  ];
 
   const games = useMemo(() => result?.games ?? [], [result]);
 
@@ -253,6 +280,10 @@ export default function App() {
     }
   }, [selection, collections.collections, installFilter]);
 
+  if (!ready) {
+    return <Splash steps={splashSteps} />;
+  }
+
   return (
     <div className="flex h-full">
       <Sidebar
@@ -276,6 +307,10 @@ export default function App() {
         onSync={() => void refresh()}
         syncedAt={result?.scannedAt ?? null}
         errors={result?.errors ?? []}
+        updateVersion={update.phase === "none" ? null : update.version}
+        updateDownloading={update.phase === "downloading"}
+        updateProgress={update.progress}
+        onInstallUpdate={() => void update.install()}
       />
 
       <main className="flex min-w-0 flex-1 flex-col">

@@ -30,4 +30,6 @@ anyhow = "1.0.104"
 reqwest = { version = "0.13.4", features = ["blocking", "json"] }
 windows-sys = { version = "0.61.2", features = ["Win32_UI_Shell", "Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
 base64 = "0.23.1"
+tauri-plugin-updater = "2.11.0"
+tauri-plugin-process = "2.3.1"
 
