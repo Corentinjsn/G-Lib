@@ -12,8 +12,8 @@ interface Props {
 }
 
 /**
- * Only Steam publishes free portrait art, so every other store gets a tinted
- * placeholder built from its own accent colour rather than an empty box.
+ * A game with no art anywhere gets a tinted placeholder built from its own
+ * store's accent colour, rather than an empty box.
  */
 function CoverPlaceholder({ game }: { game: Game }) {
   const accent = PLATFORM_COLORS[game.platform];
@@ -66,24 +66,44 @@ export function GameCard({
         selected ? "ring-2 ring-accent" : ""
       }`}
     >
-      {art ? (
-        <img
-          src={art}
-          alt=""
-          loading="lazy"
-          draggable={false}
-          onError={() => setArtBroken(true)}
-          className="h-full w-full object-cover"
-        />
-      ) : (
-        <CoverPlaceholder game={game} />
-      )}
+      {/* Owned but absent: dimmed and desaturated, so a glance at the grid
+          separates what can be played from what would need downloading. */}
+      <div
+        className={
+          game.installed
+            ? "h-full w-full"
+            : "h-full w-full opacity-45 saturate-50 transition group-hover:opacity-70 group-hover:saturate-100"
+        }
+      >
+        {art ? (
+          <img
+            src={art}
+            alt=""
+            loading="lazy"
+            draggable={false}
+            onError={() => setArtBroken(true)}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <CoverPlaceholder game={game} />
+        )}
+      </div>
 
       <div className="absolute top-1.5 left-1.5">
         <PlatformBadge platform={game.platform} />
       </div>
 
-      {/* Play affordance, revealed on hover so the art stays unobstructed. */}
+      {!game.installed && (
+        <span
+          title="Possédé, non installé"
+          aria-label="Possédé, non installé"
+          className="absolute top-1.5 right-1.5 rounded-md bg-surface-0/85 px-1.5 py-0.5 text-[11px] leading-none text-ink-muted backdrop-blur-sm"
+        >
+          ↓
+        </span>
+      )}
+
+      {/* Action affordance, revealed on hover so the art stays unobstructed. */}
       <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/90 via-black/30 to-transparent p-2 opacity-0 transition group-hover:opacity-100">
         <p className="mb-2 line-clamp-2 text-xs font-medium text-ink">
           {game.name}
@@ -94,9 +114,13 @@ export function GameCard({
             event.stopPropagation();
             onLaunch();
           }}
-          className="w-full rounded-md bg-accent py-1.5 text-xs font-semibold text-surface-0 transition hover:brightness-110"
+          className={`w-full rounded-md py-1.5 text-xs font-semibold transition hover:brightness-110 ${
+            game.installed
+              ? "bg-accent text-surface-0"
+              : "border border-line bg-surface-2 text-ink"
+          }`}
         >
-          Jouer
+          {game.installed ? "Jouer" : "Installer"}
         </button>
       </div>
     </div>

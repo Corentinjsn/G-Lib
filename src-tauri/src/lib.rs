@@ -1,8 +1,10 @@
 mod artwork;
+mod binvdf;
 mod cache;
 mod launcher;
 mod models;
 mod scanners;
+mod steam_store;
 mod vdf;
 
 use models::{Game, ScanResult};
@@ -66,9 +68,14 @@ async fn scan_library(app: AppHandle, library: State<'_, Library>) -> Result<Sca
     Ok(result)
 }
 
-/// Download any covers still missing, then return the library with art attached.
+/// The half of the library that needs the network: the Steam games the account
+/// owns but has not installed, whose appids only the store can turn into names,
+/// and then every cover still missing.
+///
+/// Kept apart from `scan_library` so the grid can paint from disk first. The
+/// store answers are cached, so this is only slow the first time.
 #[tauri::command]
-async fn fetch_covers(app: AppHandle, library: State<'_, Library>) -> Result<ScanResult, String> {
+async fn fetch_catalog(app: AppHandle, library: State<'_, Library>) -> Result<ScanResult, String> {
     let dir = data_dir(&app)?;
     let current = library
         .0
@@ -78,27 +85,40 @@ async fn fetch_covers(app: AppHandle, library: State<'_, Library>) -> Result<Sca
 
     let result = tauri::async_runtime::spawn_blocking(move || {
         let mut result = current;
+
+        let mut store = cache::load_store(&dir);
+        let owned = scanners::steam_owned_games(&mut store);
+        let _ = cache::save_store(&dir, &store);
+        scanners::merge_owned(&mut result.games, owned);
+        scanners::sort_library(&mut result.games);
+
         artwork::fetch_missing(&mut result.games, &cache::covers_dir(&dir));
         let _ = cache::save(&dir, &result);
         result
     })
     .await
-    .map_err(|e| format!("recuperation des jaquettes interrompue : {e}"))?;
+    .map_err(|e| format!("recuperation du catalogue interrompue : {e}"))?;
 
     *library.0.lock().map_err(|_| "bibliotheque verrouillee")? = result.clone();
     Ok(result)
 }
 
+/// Hands the game to its launcher: plays it if installed, installs it if not.
+/// Which of the two is decided here rather than by the frontend, so a stale
+/// grid can never ask us to launch something that is no longer on disk.
 #[tauri::command]
 fn launch_game(library: State<'_, Library>, id: String) -> Result<(), String> {
     let game = find_game(&library, &id)?;
-    launcher::launch_uri(&game.launch_uri).map_err(|e| format!("{e:#}"))
+    launcher::launch_uri(&game.action_uri).map_err(|e| format!("{e:#}"))
 }
 
 #[tauri::command]
 fn open_install_dir(library: State<'_, Library>, id: String) -> Result<(), String> {
     let game = find_game(&library, &id)?;
-    launcher::open_folder(&game.install_dir).map_err(|e| format!("{e:#}"))
+    let dir = game
+        .install_dir
+        .ok_or_else(|| format!("{} n'est pas installe", game.name))?;
+    launcher::open_folder(&dir).map_err(|e| format!("{e:#}"))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -109,7 +129,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             load_cached_library,
             scan_library,
-            fetch_covers,
+            fetch_catalog,
             launch_game,
             open_install_dir
         ])

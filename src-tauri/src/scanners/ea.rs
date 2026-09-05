@@ -140,7 +140,7 @@ pub fn scan() -> Result<Vec<Game>> {
                 continue;
             }
 
-            let mut game = Game::new(
+            let mut game = Game::installed(
                 Platform::Ea,
                 &content_id,
                 title,

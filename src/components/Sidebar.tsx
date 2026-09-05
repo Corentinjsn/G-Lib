@@ -1,7 +1,10 @@
 import {
+  INSTALL_FILTERS,
+  INSTALL_FILTER_LABELS,
   PLATFORMS,
   PLATFORM_LABELS,
   SORT_LABELS,
+  type InstallFilter,
   type Platform,
   type ScanError,
   type SortKey,
@@ -13,6 +16,9 @@ interface Props {
   total: number;
   platform: Platform | null;
   onPlatformChange: (platform: Platform | null) => void;
+  installFilter: InstallFilter;
+  onInstallFilterChange: (filter: InstallFilter) => void;
+  installCounts: Record<InstallFilter, number>;
   query: string;
   onQueryChange: (query: string) => void;
   sort: SortKey;
@@ -57,6 +63,9 @@ export function Sidebar({
   total,
   platform,
   onPlatformChange,
+  installFilter,
+  onInstallFilterChange,
+  installCounts,
   query,
   onQueryChange,
   sort,
@@ -82,9 +91,29 @@ export function Sidebar({
         className="w-full rounded-md border border-line bg-surface-2 px-3 py-1.5 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
       />
 
+      {/* Owned games outnumber installed ones several times over, so this
+          decides what the grid is about before any platform filter applies. */}
+      <div className="flex rounded-md border border-line bg-surface-2 p-0.5">
+        {INSTALL_FILTERS.map((filter) => (
+          <button
+            key={filter}
+            type="button"
+            onClick={() => onInstallFilterChange(filter)}
+            title={`${INSTALL_FILTER_LABELS[filter]} — ${installCounts[filter]} jeux`}
+            className={`flex-1 rounded px-1 py-1 text-[11px] font-medium transition ${
+              installFilter === filter
+                ? "bg-surface-3 text-ink"
+                : "text-ink-muted hover:text-ink"
+            }`}
+          >
+            {INSTALL_FILTER_LABELS[filter]}
+          </button>
+        ))}
+      </div>
+
       <nav className="flex flex-col gap-0.5">
         <FilterRow
-          label="Tous les jeux"
+          label="Toutes plateformes"
           count={total}
           active={platform === null}
           onClick={() => onPlatformChange(null)}

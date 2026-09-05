@@ -1,30 +1,24 @@
 //! Covers.
 //!
-//! Three sources, none of which needs an API key or a login:
+//! Every game gets art from the cheapest source that can supply it:
 //!
-//! - **Steam** games: the Steam client has already downloaded portrait art into
-//!   its own `librarycache`, so that is checked first -- instant, offline, and
-//!   exactly what Steam displays. Otherwise the store's asset endpoint is asked.
-//! - **Epic** games: the launcher keeps a catalogue of the whole account next to
-//!   its manifests, including the `DieselGameBoxTall` art. Matching is exact, by
-//!   catalogue id, so there is no name guessing at all.
-//! - **EA and Ubisoft** games: neither store publishes free art. Most of their
-//!   titles also ship on Steam, so the game is looked up there by name and
-//!   Steam's portrait art is used. A title with no confident match keeps the
-//!   generated placeholder rather than risk showing the wrong game's cover.
+//! - A scanner that already knows a URL -- Epic from its local catalogue, and
+//!   any owned Steam game named by the store -- hands it over directly.
+//! - Installed **Steam** games are served from the client's own `librarycache`:
+//!   instant, offline, and exactly what Steam displays. Otherwise the store's
+//!   asset endpoint is asked.
+//! - **EA and Ubisoft** publish no free art. Most of their titles also ship on
+//!   Steam, so the game is looked up there by name. A title with no confident
+//!   match keeps the generated placeholder rather than risk showing the wrong
+//!   game's cover.
 //!
 //! Art is cached in the app's own data directory and served through Tauri's
 //! asset protocol, which keeps the CSP closed to remote hosts.
 
 use crate::models::{Game, Platform};
 use crate::scanners::steam::steam_root;
-use std::collections::HashMap;
+use crate::steam_store;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
-
-const STEAM_ASSET_HOST: &str = "https://shared.cloudflare.steamstatic.com/store_item_assets/";
-const STEAM_SEARCH: &str = "https://steamcommunity.com/actions/SearchApps/";
-const STEAM_GET_ITEMS: &str = "https://api.steampowered.com/IStoreBrowseService/GetItems/v1/";
 
 /// Filenames the Steam client uses locally, best first. The first two are
 /// portrait; `library_header` is landscape and only worth taking as a last
@@ -43,6 +37,9 @@ const PARALLEL_FETCHES: usize = 8;
 /// answers some misses with a ~1.5 KB image instead of a 404.
 const MIN_ART_BYTES: usize = 5_000;
 
+/// How many shortened variants of a title to try before giving up.
+const MAX_SEARCH_ATTEMPTS: usize = 4;
+
 fn cover_file(covers_dir: &Path, game: &Game) -> PathBuf {
     covers_dir.join(format!("{}_{}.jpg", game.platform.slug(), game.platform_id))
 }
@@ -57,10 +54,10 @@ pub fn attach_cached(games: &mut [Game], covers_dir: &Path) {
 
 /// Where a cover still has to come from.
 enum CoverSource {
-    /// Already resolved, e.g. from Epic's local catalogue.
-    Url(String),
+    /// Already resolved by the scanner.
+    Urls(Vec<String>),
     /// Ask Steam's store for this appid's art.
-    SteamApp(String),
+    SteamApp(u32),
     /// Find the game on Steam by name first, then ask for its art.
     SteamTitle(String),
 }
@@ -73,19 +70,6 @@ fn title_key(title: &str) -> String {
         .filter(|c| c.is_ascii_alphanumeric())
         .flat_map(|c| c.to_lowercase())
         .collect()
-}
-
-fn percent_encode(value: &str) -> String {
-    let mut out = String::new();
-    for byte in value.as_bytes() {
-        match byte {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                out.push(*byte as char)
-            }
-            other => out.push_str(&format!("%{other:02X}")),
-        }
-    }
-    out
 }
 
 /// Pick the Steam app that is really this game, from a search response.
@@ -117,33 +101,6 @@ fn best_match(results: &[(String, String)], wanted: &str) -> Option<String> {
         .max_by_key(|(len, _)| *len)
         .map(|(_, appid)| appid)
 }
-
-fn search_steam(client: &reqwest::blocking::Client, term: &str) -> Vec<(String, String)> {
-    let url = format!("{STEAM_SEARCH}{}", percent_encode(term));
-    let Ok(response) = client.get(&url).send() else {
-        return Vec::new();
-    };
-    let Ok(value) = response.json::<serde_json::Value>() else {
-        return Vec::new();
-    };
-    value
-        .as_array()
-        .map(|items| {
-            items
-                .iter()
-                .filter_map(|item| {
-                    Some((
-                        item.get("appid")?.as_str()?.to_string(),
-                        item.get("name")?.as_str()?.to_string(),
-                    ))
-                })
-                .collect()
-        })
-        .unwrap_or_default()
-}
-
-/// How many shortened variants of a title to try before giving up.
-const MAX_SEARCH_ATTEMPTS: usize = 4;
 
 /// Search terms to try for a title, most faithful first.
 fn search_terms(title: &str) -> Vec<String> {
@@ -177,55 +134,11 @@ fn search_terms(title: &str) -> Vec<String> {
 }
 
 /// Steam appid for a game we only know by name.
-fn steam_appid_for_title(client: &reqwest::blocking::Client, title: &str) -> Option<String> {
+fn steam_appid_for_title(client: &reqwest::blocking::Client, title: &str) -> Option<u32> {
     search_terms(title)
         .iter()
-        .find_map(|term| best_match(&search_steam(client, term), title))
-}
-
-/// Cover URLs for a Steam appid, best first.
-///
-/// The store returns art under a per-asset hashed path, which is the only way
-/// to reach cover art for recent titles: the old flat
-/// `.../apps/<appid>/library_600x900.jpg` route now 404s for them.
-fn steam_store_art_urls(client: &reqwest::blocking::Client, appid: &str) -> Vec<String> {
-    let input_json = format!(
-        r#"{{"ids":[{{"appid":{appid}}}],"context":{{"language":"english","country_code":"FR"}},"data_request":{{"include_assets":true}}}}"#
-    );
-    let url = format!(
-        "{STEAM_GET_ITEMS}?input_json={}",
-        percent_encode(&input_json)
-    );
-    let Ok(response) = client.get(&url).send() else {
-        return Vec::new();
-    };
-    let Ok(value) = response.json::<serde_json::Value>() else {
-        return Vec::new();
-    };
-
-    let null = serde_json::Value::Null;
-    let assets = value
-        .pointer("/response/store_items/0/assets")
-        .unwrap_or(&null);
-    let Some(url_format) = assets.get("asset_url_format").and_then(|v| v.as_str()) else {
-        return Vec::new();
-    };
-    let Some(capsule) = assets.get("library_capsule").and_then(|v| v.as_str()) else {
-        return Vec::new();
-    };
-
-    // The 2x variant is 600x900 against the base 300x450 -- worth having on a
-    // high-DPI display, but it is not published for every app.
-    let retina = capsule.replace(".jpg", "_2x.jpg");
-    [retina.as_str(), capsule]
-        .iter()
-        .map(|name| {
-            format!(
-                "{STEAM_ASSET_HOST}{}",
-                url_format.replace("${FILENAME}", name)
-            )
-        })
-        .collect()
+        .find_map(|term| best_match(&steam_store::search_apps(client, term), title))
+        .and_then(|appid| appid.parse().ok())
 }
 
 /// Best art the Steam client has already cached for this app, if any.
@@ -268,12 +181,20 @@ fn download(client: &reqwest::blocking::Client, urls: &[String], target: &Path) 
     false
 }
 
+fn store_art(client: &reqwest::blocking::Client, appid: u32) -> Vec<String> {
+    steam_store::get_items(client, &[appid])
+        .into_iter()
+        .next()
+        .map(|item| item.cover_urls)
+        .unwrap_or_default()
+}
+
 fn fetch_one(client: &reqwest::blocking::Client, source: &CoverSource, target: &Path) -> bool {
     let urls = match source {
-        CoverSource::Url(url) => vec![url.clone()],
-        CoverSource::SteamApp(appid) => steam_store_art_urls(client, appid),
+        CoverSource::Urls(urls) => urls.clone(),
+        CoverSource::SteamApp(appid) => store_art(client, *appid),
         CoverSource::SteamTitle(title) => match steam_appid_for_title(client, title) {
-            Some(appid) => steam_store_art_urls(client, &appid),
+            Some(appid) => store_art(client, appid),
             None => Vec::new(),
         },
     };
@@ -287,12 +208,16 @@ pub fn fetch_missing(games: &mut [Game], covers_dir: &Path) {
     }
 
     let librarycache = steam_root().map(|root| root.join("appcache").join("librarycache"));
-    let mut epic_covers: Option<HashMap<String, String>> = None;
     let mut tasks: Vec<(CoverSource, PathBuf)> = Vec::new();
 
     for game in games.iter() {
         let target = cover_file(covers_dir, game);
         if target.is_file() {
+            continue;
+        }
+
+        if !game.cover_urls.is_empty() {
+            tasks.push((CoverSource::Urls(game.cover_urls.clone()), target));
             continue;
         }
 
@@ -303,17 +228,14 @@ pub fn fetch_missing(games: &mut [Game], covers_dir: &Path) {
                     .and_then(|cache| local_steam_art(cache, &game.platform_id))
                     .is_some_and(|source| std::fs::copy(source, &target).is_ok());
                 if !copied {
-                    tasks.push((CoverSource::SteamApp(game.platform_id.clone()), target));
+                    if let Ok(appid) = game.platform_id.parse() {
+                        tasks.push((CoverSource::SteamApp(appid), target));
+                    }
                 }
             }
-            Platform::Epic => {
-                let covers = epic_covers.get_or_insert_with(crate::scanners::epic::catalog_covers);
-                // No catalogue entry means no confident art; the placeholder is
-                // the honest answer.
-                if let Some(url) = covers.get(&game.platform_id) {
-                    tasks.push((CoverSource::Url(url.clone()), target));
-                }
-            }
+            // Epic art comes from the local catalogue, so an Epic game with no
+            // URL by now has no catalogue entry; the placeholder is honest.
+            Platform::Epic => {}
             Platform::Ea | Platform::Ubisoft => {
                 tasks.push((CoverSource::SteamTitle(game.name.clone()), target));
             }
@@ -321,11 +243,7 @@ pub fn fetch_missing(games: &mut [Game], covers_dir: &Path) {
     }
 
     if !tasks.is_empty() {
-        if let Ok(client) = reqwest::blocking::Client::builder()
-            .timeout(Duration::from_secs(20))
-            .user_agent("GAMLIB/0.1")
-            .build()
-        {
+        if let Some(client) = steam_store::client() {
             for chunk in tasks.chunks(PARALLEL_FETCHES) {
                 std::thread::scope(|scope| {
                     for (source, target) in chunk {

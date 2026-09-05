@@ -22,7 +22,12 @@ impl Platform {
     }
 }
 
-/// One installed game, normalized across every platform.
+/// One game in the library, normalized across every platform.
+///
+/// A game is either installed and launchable, or owned and installable. The
+/// two share everything else, so they are the same type with `installed`
+/// telling them apart rather than two parallel shapes the UI would have to
+/// merge.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Game {
@@ -32,23 +37,27 @@ pub struct Game {
     /// appid / AppName / contentID / uplay install id.
     pub platform_id: String,
     pub name: String,
-    pub install_dir: PathBuf,
+    pub installed: bool,
+    /// Only meaningful when installed.
+    pub install_dir: Option<PathBuf>,
     pub size_on_disk: Option<u64>,
     /// Unix epoch seconds. Steam only for now.
     pub last_played: Option<i64>,
     /// Absolute path to the cached cover on disk, once fetched.
     pub cover_path: Option<PathBuf>,
-    /// Built at scan time: each scanner knows how its platform launches.
-    pub launch_uri: String,
+    /// Where the cover can be downloaded, best first, when the scanner already
+    /// knows. Saves the artwork pass a lookup it would otherwise repeat.
+    pub cover_urls: Vec<String>,
+    /// Hands the game to its launcher: to play it, or to install it.
+    pub action_uri: String,
 }
 
 impl Game {
-    pub fn new(
+    fn base(
         platform: Platform,
         platform_id: impl Into<String>,
         name: impl Into<String>,
-        install_dir: impl Into<PathBuf>,
-        launch_uri: impl Into<String>,
+        action_uri: impl Into<String>,
     ) -> Self {
         let platform_id = platform_id.into();
         Game {
@@ -56,12 +65,39 @@ impl Game {
             platform,
             platform_id,
             name: name.into(),
-            install_dir: install_dir.into(),
+            installed: false,
+            install_dir: None,
             size_on_disk: None,
             last_played: None,
             cover_path: None,
-            launch_uri: launch_uri.into(),
+            cover_urls: Vec::new(),
+            action_uri: action_uri.into(),
         }
+    }
+
+    /// A game present on disk. `action_uri` launches it.
+    pub fn installed(
+        platform: Platform,
+        platform_id: impl Into<String>,
+        name: impl Into<String>,
+        install_dir: impl Into<PathBuf>,
+        launch_uri: impl Into<String>,
+    ) -> Self {
+        Game {
+            installed: true,
+            install_dir: Some(install_dir.into()),
+            ..Game::base(platform, platform_id, name, launch_uri)
+        }
+    }
+
+    /// A game the account owns but has not installed. `action_uri` installs it.
+    pub fn owned(
+        platform: Platform,
+        platform_id: impl Into<String>,
+        name: impl Into<String>,
+        install_uri: impl Into<String>,
+    ) -> Self {
+        Game::base(platform, platform_id, name, install_uri)
     }
 }
 

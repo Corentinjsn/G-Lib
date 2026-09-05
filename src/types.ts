@@ -7,11 +7,15 @@ export interface Game {
   platform: Platform;
   platformId: string;
   name: string;
-  installDir: string;
+  /** Present on disk and launchable, as opposed to owned and installable. */
+  installed: boolean;
+  installDir: string | null;
   sizeOnDisk: number | null;
   lastPlayed: number | null;
   coverPath: string | null;
-  launchUri: string;
+  coverUrls: string[];
+  /** Launches the game, or installs it. The backend decides which. */
+  actionUri: string;
 }
 
 export interface ScanError {
@@ -48,4 +52,22 @@ export const SORT_LABELS: Record<SortKey, string> = {
   name: "Nom",
   lastPlayed: "Dernière session",
   size: "Taille",
+};
+
+/**
+ * Owned games outnumber installed ones several times over, so the grid opens
+ * on what can actually be played and the rest is one click away.
+ */
+export type InstallFilter = "installed" | "all" | "notInstalled";
+
+export const INSTALL_FILTERS: InstallFilter[] = [
+  "installed",
+  "all",
+  "notInstalled",
+];
+
+export const INSTALL_FILTER_LABELS: Record<InstallFilter, string> = {
+  installed: "Installés",
+  all: "Tous",
+  notInstalled: "À installer",
 };

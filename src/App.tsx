@@ -6,7 +6,14 @@ import { Sidebar } from "./components/Sidebar";
 import { useLibrary } from "./hooks/useLibrary";
 import { launchGame, openInstallDir } from "./lib/api";
 import { normalize } from "./lib/format";
-import { PLATFORMS, type Game, type Platform, type SortKey } from "./types";
+import {
+  INSTALL_FILTER_LABELS,
+  PLATFORMS,
+  type Game,
+  type InstallFilter,
+  type Platform,
+  type SortKey,
+} from "./types";
 
 const EMPTY_COUNTS = Object.fromEntries(
   PLATFORMS.map((platform) => [platform, 0]),
@@ -34,21 +41,40 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [platform, setPlatform] = useState<Platform | null>(null);
   const [sort, setSort] = useState<SortKey>("name");
+  const [installFilter, setInstallFilter] = useState<InstallFilter>("installed");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   const games = useMemo(() => result?.games ?? [], [result]);
 
+  const installCounts = useMemo(() => {
+    const installed = games.filter((game) => game.installed).length;
+    return {
+      installed,
+      all: games.length,
+      notInstalled: games.length - installed,
+    };
+  }, [games]);
+
+  /** The install filter comes first: everything else counts within it. */
+  const scoped = useMemo(
+    () =>
+      games.filter((game) =>
+        installFilter === "all" ? true : game.installed === (installFilter === "installed"),
+      ),
+    [games, installFilter],
+  );
+
   const counts = useMemo(() => {
     const tally = { ...EMPTY_COUNTS };
-    for (const game of games) tally[game.platform] += 1;
+    for (const game of scoped) tally[game.platform] += 1;
     return tally;
-  }, [games]);
+  }, [scoped]);
 
   const visible = useMemo(() => {
     const needle = normalize(query.trim());
-    const filtered = games.filter(
+    const filtered = scoped.filter(
       (game) =>
         (platform === null || game.platform === platform) &&
         (needle === "" || normalize(game.name).includes(needle)),
@@ -65,7 +91,7 @@ export default function App() {
           return a.name.localeCompare(b.name, "fr");
       }
     });
-  }, [games, platform, query, sort]);
+  }, [scoped, platform, query, sort]);
 
   const selected = useMemo(
     () => games.find((game) => game.id === selectedId) ?? null,
@@ -92,7 +118,8 @@ export default function App() {
 
   const handleLaunch = (game: Game) => {
     setMenu(null);
-    void run(launchGame(game.id), `Impossible de lancer ${game.name}`);
+    const verb = game.installed ? "lancer" : "installer";
+    void run(launchGame(game.id), `Impossible de ${verb} ${game.name}`);
   };
 
   const handleOpenFolder = (game: Game) => {
@@ -114,9 +141,12 @@ export default function App() {
     <div className="flex h-full">
       <Sidebar
         counts={counts}
-        total={games.length}
+        total={scoped.length}
         platform={platform}
         onPlatformChange={setPlatform}
+        installFilter={installFilter}
+        onInstallFilterChange={setInstallFilter}
+        installCounts={installCounts}
         query={query}
         onQueryChange={setQuery}
         sort={sort}
@@ -130,13 +160,17 @@ export default function App() {
         <header className="flex items-center justify-between border-b border-line px-6 py-3">
           <span className="text-sm text-ink-muted">
             {visible.length} {visible.length > 1 ? "jeux" : "jeu"}
-            {platform || query ? ` sur ${games.length}` : ""}
+            {platform || query ? ` sur ${scoped.length}` : ""}
+            <span className="text-ink-faint">
+              {" "}
+              · {INSTALL_FILTER_LABELS[installFilter].toLowerCase()}
+            </span>
           </span>
           {status !== "idle" && (
             <span className="text-xs text-ink-faint">
               {status === "scanning"
                 ? "Analyse des launchers…"
-                : "Récupération des jaquettes…"}
+                : "Récupération du catalogue…"}
             </span>
           )}
         </header>
@@ -168,6 +202,7 @@ export default function App() {
       {menu && menuGame && (
         <ContextMenu
           state={menu}
+          installed={menuGame.installed}
           onClose={() => setMenu(null)}
           onLaunch={() => handleLaunch(menuGame)}
           onOpenFolder={() => handleOpenFolder(menuGame)}

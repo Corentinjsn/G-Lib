@@ -63,22 +63,30 @@ export function GameDetail({ game, onClose, onLaunch, onOpenFolder }: Props) {
             onClick={onLaunch}
             className="flex-1 rounded-md bg-accent py-2 text-sm font-semibold text-surface-0 transition hover:brightness-110"
           >
-            Jouer
+            {game.installed ? "Jouer" : "Installer"}
           </button>
-          <button
-            type="button"
-            onClick={onOpenFolder}
-            className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink-muted transition hover:border-accent hover:text-ink"
-          >
-            Dossier
-          </button>
+          {game.installed && (
+            <button
+              type="button"
+              onClick={onOpenFolder}
+              className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink-muted transition hover:border-accent hover:text-ink"
+            >
+              Dossier
+            </button>
+          )}
         </div>
 
         <div className="flex flex-col gap-3 border-t border-line pt-4">
           <Field label="Plateforme" value={PLATFORM_LABELS[game.platform]} />
+          <Field
+            label="État"
+            value={game.installed ? "Installé" : "Possédé, non installé"}
+          />
           {size && <Field label="Taille sur disque" value={size} />}
           {lastPlayed && <Field label="Dernière session" value={lastPlayed} />}
-          <Field label="Dossier d'installation" value={game.installDir} />
+          {game.installDir && (
+            <Field label="Dossier d'installation" value={game.installDir} />
+          )}
         </div>
       </div>
     </aside>

@@ -8,8 +8,8 @@ export const loadCachedLibrary = () =>
 /** Re-read every launcher. */
 export const scanLibrary = () => invoke<ScanResult>("scan_library");
 
-/** Download any covers still missing, then hand back the library with art. */
-export const fetchCovers = () => invoke<ScanResult>("fetch_covers");
+/** Resolve owned Steam games and download any missing covers. */
+export const fetchCatalog = () => invoke<ScanResult>("fetch_catalog");
 
 export const launchGame = (id: string) => invoke<void>("launch_game", { id });
 

@@ -1,13 +1,16 @@
 # GAMLIB
 
 Une bibliothèque de jeux unique pour Steam, Epic Games, EA et Ubisoft Connect.
-Scanne les jeux **installés**, les affiche dans une grille de jaquettes, et les
-lance d'un clic — sans ouvrir quatre launchers.
+Affiche les jeux **installés** comme ceux que vous **possédez sans les avoir
+installés**, dans une grille de jaquettes, et les lance — ou les installe —
+d'un clic, sans ouvrir quatre launchers.
 
 ## Fonctionnement
 
 Tout le scan est local : fichiers et registre Windows. Aucun login, aucune API
 propriétaire, aucun token.
+
+### Jeux installés
 
 | Plateforme | Source | Lancement |
 |---|---|---|
@@ -15,6 +18,25 @@ propriétaire, aucun token.
 | Epic | manifests JSON `%PROGRAMDATA%\Epic\EpicGamesLauncher\Data\Manifests\*.item` | `com.epicgames.launcher://apps/<ns>:<item>:<app>?action=launch` |
 | EA | entrées de désinstallation + `<jeu>\__Installer\installerdata.xml` → contentID | `origin2://game/launch?offerIds=<id>` |
 | Ubisoft | `HKLM\...\Ubisoft\Launcher\Installs\<id>` | `uplay://launch/<id>/0` |
+
+### Jeux possédés, non installés
+
+| Plateforme | Source | Installation |
+|---|---|---|
+| Steam | `appcache\packageinfo.vdf` — la liste des licences, en VDF binaire. Les appids sont ensuite nommés et illustrés par l'API store, qui écarte au passage DLC, bandes-son et outils | `steam://install/<appid>` |
+| Epic | `Data\Catalog\catcache.bin` — le catalogue du compte, déjà lu pour les jaquettes | `com.epicgames.launcher://apps/...?action=install` |
+| EA · Ubisoft | **aucune** : ces launchers ne gardent en local que ce qui est installé | — |
+
+Le fichier de licences Steam n'est pas une heuristique : tous les jeux
+installés y figurent. Il accorde en revanche bien plus d'appids que de jeux
+(562 pour 148 jeux sur une bibliothèque réelle), d'où le tri par l'API store.
+Les réponses — y compris les négatives, qui sont la majorité — sont mises en
+cache dans `steam-store.json`, sans quoi des centaines d'appids seraient
+réinterrogés à chaque lancement.
+
+La grille s'ouvre sur les jeux installés ; un sélecteur donne accès à
+« Tous » et « À installer ». Les jeux non installés sont grisés et portent un
+badge ↓.
 
 ### Jaquettes
 
@@ -69,7 +91,8 @@ cargo test -- --ignored --nocapture dump_real_library   # dump de la machine
 
 ## Pas encore fait
 
-Jeux possédés non installés · choisir sa propre jaquette (et donc corriger une
-correspondance ratée sans vider le cache) · suivi du temps de jeu · favoris et
+Jeux possédés côté EA et Ubisoft (aucune source locale — il faudrait
+s'authentifier) · choisir sa propre jaquette, et donc corriger une
+correspondance ratée sans vider le cache · suivi du temps de jeu · favoris et
 catégories · GOG, Battle.net, Xbox · import de jeux manuels · détection
 d'installation en temps réel.

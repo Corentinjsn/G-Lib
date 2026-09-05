@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchCovers, loadCachedLibrary, scanLibrary } from "../lib/api";
+import { fetchCatalog, loadCachedLibrary, scanLibrary } from "../lib/api";
 import type { ScanResult } from "../types";
 
-type Status = "idle" | "scanning" | "fetching-covers";
+type Status = "idle" | "scanning" | "fetching-catalog";
 
 /**
  * Owns the library. Paints the cached scan first, then refreshes from the
- * launchers, then fills in any missing cover art -- each step replacing the
- * grid in place so the window is never blank while work is happening.
+ * launchers on disk, then goes to the network for the owned Steam catalogue
+ * and any missing cover art -- each step replacing the grid in place, so the
+ * window is never blank while work is happening.
  */
 export function useLibrary() {
   const [result, setResult] = useState<ScanResult | null>(null);
@@ -23,8 +24,8 @@ export function useLibrary() {
       setStatus("scanning");
       setResult(await scanLibrary());
 
-      setStatus("fetching-covers");
-      setResult(await fetchCovers());
+      setStatus("fetching-catalog");
+      setResult(await fetchCatalog());
     } catch (cause) {
       setError(String(cause));
     } finally {

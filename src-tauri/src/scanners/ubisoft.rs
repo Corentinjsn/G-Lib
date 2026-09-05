@@ -67,7 +67,7 @@ pub fn scan() -> Result<Vec<Game>> {
             .or_else(|| name_from_path(&install_dir))
             .unwrap_or_else(|| format!("Ubisoft {install_id}"));
 
-        let mut game = Game::new(
+        let mut game = Game::installed(
             Platform::Ubisoft,
             &install_id,
             clean_title(&raw_name),

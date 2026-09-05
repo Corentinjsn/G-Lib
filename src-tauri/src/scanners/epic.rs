@@ -65,7 +65,7 @@ pub fn game_from_manifest(manifest: &EpicManifest) -> Option<Game> {
         manifest.catalog_namespace, manifest.catalog_item_id, manifest.app_name
     );
 
-    let mut game = Game::new(
+    let mut game = Game::installed(
         Platform::Epic,
         &manifest.app_name,
         clean_title(&manifest.display_name),
@@ -101,23 +101,25 @@ pub fn scan() -> Result<Vec<Game>> {
             }
         }
     }
+
+    // The manifests say nothing about artwork; the catalogue next door does.
+    let covers = catalog_covers();
+    for game in &mut games {
+        game.cover_urls = covers.get(&game.platform_id).cloned().into_iter().collect();
+    }
+
     Ok(games)
 }
 
-/// Epic keeps the store catalogue for everything in the account, base64-encoded
-/// JSON, next to the manifests. It carries `DieselGameBoxTall` -- the same 2:3
-/// art the launcher shows -- so Epic games get exact cover art with no name
-/// guessing and no store API.
-///
-/// Returns cover URLs keyed by *both* the catalogue id and every release's
-/// app name, because a manifest identifies its game by app name while the
-/// catalogue entry is keyed by catalogue id.
-pub fn catalog_covers() -> HashMap<String, String> {
-    let mut covers = HashMap::new();
-
+/// Epic keeps the catalogue of everything in the account next to its manifests,
+/// as base64-encoded JSON. It is the whole owned library, not just what is
+/// installed, and it carries `DieselGameBoxTall` -- the same 2:3 art the
+/// launcher shows. Both the owned list and the cover art therefore come from
+/// disk, with exact matching by catalogue id and no store API at all.
+fn read_catalog() -> Vec<CatalogEntry> {
     let path = epic_data_dir().join("Catalog").join("catcache.bin");
     let Ok(encoded) = std::fs::read(&path) else {
-        return covers;
+        return Vec::new();
     };
     // The file is one base64 blob, sometimes with trailing whitespace.
     let trimmed: Vec<u8> = encoded
@@ -125,40 +127,93 @@ pub fn catalog_covers() -> HashMap<String, String> {
         .filter(|b| !b.is_ascii_whitespace())
         .collect();
     let Ok(decoded) = BASE64.decode(trimmed) else {
-        return covers;
+        return Vec::new();
     };
-    let Ok(entries) = serde_json::from_slice::<Vec<CatalogEntry>>(&decoded) else {
-        return covers;
-    };
+    serde_json::from_slice::<Vec<CatalogEntry>>(&decoded).unwrap_or_default()
+}
 
-    for entry in entries {
-        let Some(image) = entry
-            .key_images
+impl CatalogEntry {
+    fn is_game(&self) -> bool {
+        self.categories.iter().any(|c| c.path == "games")
+    }
+
+    /// Epic's CDN resizes on demand; full-size art runs to several megabytes.
+    fn cover_url(&self) -> Option<String> {
+        self.key_images
             .iter()
             .find(|image| image.image_type == "DieselGameBoxTall")
-        else {
+            .map(|image| format!("{}?resize=1&w=600&h=900&quality=medium", image.url))
+    }
+
+    fn app_name(&self) -> Option<&str> {
+        self.release_info
+            .iter()
+            .find_map(|r| r.app_id.as_deref())
+            .filter(|id| !id.is_empty())
+    }
+}
+
+/// Cover URLs keyed by *both* the catalogue id and every release's app name:
+/// a manifest identifies its game by app name, while the catalogue entry is
+/// keyed by catalogue id.
+pub fn catalog_covers() -> HashMap<String, String> {
+    let mut covers = HashMap::new();
+    for entry in read_catalog() {
+        let Some(url) = entry.cover_url() else {
             continue;
         };
-        // Epic's CDN resizes on demand; full-size art runs to several MB.
-        let url = format!("{}?resize=1&w=600&h=900&quality=medium", image.url);
-
         for key in std::iter::once(entry.id.clone())
             .chain(entry.release_info.iter().filter_map(|r| r.app_id.clone()))
         {
             covers.entry(key).or_insert_with(|| url.clone());
         }
     }
-
     covers
+}
+
+/// Games the account owns, as installable entries. Whether each is actually
+/// installed is settled later, when these are merged with the manifest scan.
+pub fn owned_games() -> Vec<Game> {
+    read_catalog()
+        .into_iter()
+        .filter(|entry| entry.is_game())
+        .filter_map(|entry| {
+            let app_name = entry.app_name()?.to_string();
+            let install_uri = format!(
+                "com.epicgames.launcher://apps/{}%3A{}%3A{}?action=install",
+                entry.namespace, entry.id, app_name
+            );
+            let mut game = Game::owned(
+                Platform::Epic,
+                &app_name,
+                clean_title(&entry.title),
+                install_uri,
+            );
+            game.cover_urls = entry.cover_url().into_iter().collect();
+            Some(game)
+        })
+        .collect()
 }
 
 #[derive(Debug, Deserialize)]
 struct CatalogEntry {
     id: String,
+    #[serde(default)]
+    title: String,
+    #[serde(default)]
+    namespace: String,
+    #[serde(default)]
+    categories: Vec<CatalogCategory>,
     #[serde(default, rename = "keyImages")]
     key_images: Vec<CatalogImage>,
     #[serde(default, rename = "releaseInfo")]
     release_info: Vec<CatalogRelease>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CatalogCategory {
+    #[serde(default)]
+    path: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -186,12 +241,16 @@ mod tests {
         let game = game_from_manifest(&manifest).expect("should be a game");
         assert_eq!(game.name, "FragPunk");
         assert_eq!(game.id, "epic:467ee0aa2bae403cb88bd033f13d8317");
-        assert_eq!(game.install_dir, Path::new(r"F:\FragPunkFgux4"));
+        assert!(game.installed);
+        assert_eq!(
+            game.install_dir.as_deref(),
+            Some(Path::new(r"F:\FragPunkFgux4"))
+        );
         assert_eq!(game.size_on_disk, Some(37162586456));
         assert!(game
-            .launch_uri
+            .action_uri
             .starts_with("com.epicgames.launcher://apps/0d2e23cbeacc43a085345b3e565a3114%3A"));
-        assert!(game.launch_uri.ends_with("?action=launch&silent=true"));
+        assert!(game.action_uri.ends_with("?action=launch&silent=true"));
     }
 
     #[test]

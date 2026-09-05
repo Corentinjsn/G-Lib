@@ -106,7 +106,7 @@ pub fn game_from_manifest(text: &str, library: &Path) -> Option<Game> {
         .join("common")
         .join(installdir.replace('/', "\\"));
 
-    let mut game = Game::new(
+    let mut game = Game::installed(
         Platform::Steam,
         &appid,
         name,
@@ -116,6 +116,28 @@ pub fn game_from_manifest(text: &str, library: &Path) -> Option<Game> {
     game.size_on_disk = state.get_u64("SizeOnDisk").filter(|&s| s > 0);
     game.last_played = state.get_i64("LastPlayed").filter(|&t| t > 0);
     Some(game)
+}
+
+/// Every appid the account holds a licence for, read from the client's own
+/// `packageinfo.vdf`.
+///
+/// This is the licence list, not a heuristic: every installed game appears in
+/// it. It also grants DLC, soundtracks and tools, so the caller has to ask the
+/// store which of these appids are actually games.
+pub fn owned_appids() -> Vec<u32> {
+    let Some(root) = steam_root() else {
+        return Vec::new();
+    };
+    let path = root.join("appcache").join("packageinfo.vdf");
+    let Ok(bytes) = std::fs::read(&path) else {
+        return Vec::new();
+    };
+    crate::binvdf::owned_appids(&bytes)
+}
+
+/// Hands an appid to the client's install flow.
+pub fn install_uri(appid: u32) -> String {
+    format!("steam://install/{appid}")
 }
 
 pub fn scan() -> Result<Vec<Game>> {
@@ -162,12 +184,15 @@ mod tests {
         let game = game_from_manifest(SIEGE_ACF, library).expect("should parse");
         assert_eq!(game.id, "steam:359550");
         assert_eq!(game.name, "Tom Clancy's Rainbow Six Siege");
-        assert_eq!(game.launch_uri, "steam://rungameid/359550");
+        assert_eq!(game.action_uri, "steam://rungameid/359550");
         assert_eq!(game.size_on_disk, Some(51071355985));
         assert_eq!(game.last_played, Some(1771013925));
+        assert!(game.installed);
         assert_eq!(
-            game.install_dir,
-            Path::new(r"F:\SteamLibrary\steamapps\common\Tom Clancy's Rainbow Six Siege")
+            game.install_dir.as_deref(),
+            Some(Path::new(
+                r"F:\SteamLibrary\steamapps\common\Tom Clancy's Rainbow Six Siege"
+            ))
         );
     }
 

@@ -8,12 +8,19 @@ export interface MenuState {
 
 interface Props {
   state: MenuState;
+  installed: boolean;
   onClose: () => void;
   onLaunch: () => void;
   onOpenFolder: () => void;
 }
 
-export function ContextMenu({ state, onClose, onLaunch, onOpenFolder }: Props) {
+export function ContextMenu({
+  state,
+  installed,
+  onClose,
+  onLaunch,
+  onOpenFolder,
+}: Props) {
   useEffect(() => {
     const dismiss = () => onClose();
     window.addEventListener("click", dismiss);
@@ -26,10 +33,13 @@ export function ContextMenu({ state, onClose, onLaunch, onOpenFolder }: Props) {
     };
   }, [onClose]);
 
-  const items = [
-    { label: "Jouer", action: onLaunch },
-    { label: "Ouvrir le dossier", action: onOpenFolder },
-  ];
+  // A game that is not on disk has no folder to open.
+  const items = installed
+    ? [
+        { label: "Jouer", action: onLaunch },
+        { label: "Ouvrir le dossier", action: onOpenFolder },
+      ]
+    : [{ label: "Installer", action: onLaunch }];
 
   return (
     <div
