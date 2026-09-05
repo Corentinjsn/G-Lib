@@ -1,5 +1,5 @@
 import { coverUrl } from "../lib/api";
-import { formatLastPlayed, formatSize } from "../lib/format";
+import { formatLastPlayed, formatPlaytime, formatSize } from "../lib/format";
 import { PLATFORM_LABELS, type Game } from "../types";
 import { PlatformBadge } from "./PlatformBadge";
 
@@ -27,6 +27,7 @@ export function GameDetail({ game, onClose, onLaunch, onOpenFolder }: Props) {
   const art = coverUrl(game.coverPath);
   const size = formatSize(game.sizeOnDisk);
   const lastPlayed = formatLastPlayed(game.lastPlayed);
+  const playtime = formatPlaytime(game.playtimeSeconds);
 
   return (
     <aside className="flex w-80 shrink-0 flex-col border-l border-line bg-surface-1">
@@ -84,6 +85,7 @@ export function GameDetail({ game, onClose, onLaunch, onOpenFolder }: Props) {
           />
           {size && <Field label="Taille sur disque" value={size} />}
           {lastPlayed && <Field label="Dernière session" value={lastPlayed} />}
+          {playtime && <Field label="Temps de jeu" value={playtime} />}
           {game.installDir && (
             <Field label="Dossier d'installation" value={game.installDir} />
           )}

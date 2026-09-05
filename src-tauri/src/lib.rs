@@ -4,6 +4,7 @@ mod cache;
 mod collections;
 mod launcher;
 mod models;
+mod playtime;
 mod scanners;
 mod steam_store;
 mod vdf;
@@ -58,6 +59,7 @@ async fn scan_library(app: AppHandle, library: State<'_, Library>) -> Result<Sca
     let dir = data_dir(&app)?;
     let result = tauri::async_runtime::spawn_blocking(move || {
         let mut result = scanners::scan_all();
+        playtime::apply(&mut result.games, &playtime::load(&dir));
         artwork::attach_cached(&mut result.games, &cache::covers_dir(&dir));
         let _ = cache::save(&dir, &result);
         result
@@ -91,6 +93,7 @@ async fn fetch_catalog(app: AppHandle, library: State<'_, Library>) -> Result<Sc
         let owned = scanners::steam_owned_games(&mut store);
         let _ = cache::save_store(&dir, &store);
         scanners::merge_owned(&mut result.games, owned);
+        playtime::apply(&mut result.games, &playtime::load(&dir));
         scanners::sort_library(&mut result.games);
 
         artwork::fetch_missing(&mut result.games, &cache::covers_dir(&dir));
@@ -102,6 +105,22 @@ async fn fetch_catalog(app: AppHandle, library: State<'_, Library>) -> Result<Sc
 
     *library.0.lock().map_err(|_| "bibliotheque verrouillee")? = result.clone();
     Ok(result)
+}
+
+/// Re-reads the session log and folds it back into the library in memory.
+///
+/// Cheap enough to call whenever the window regains focus, which is exactly
+/// when the user has just come back from playing something.
+#[tauri::command]
+fn refresh_playtime(app: AppHandle, library: State<'_, Library>) -> Result<ScanResult, String> {
+    let dir = data_dir(&app)?;
+    let sessions = playtime::load(&dir);
+    let mut current = library
+        .0
+        .lock()
+        .map_err(|_| "bibliotheque verrouillee".to_string())?;
+    playtime::apply(&mut current.games, &sessions);
+    Ok(current.clone())
 }
 
 /// Hands the game to its launcher: plays it if installed, installs it if not.
@@ -166,12 +185,29 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .manage(Library::default())
+        .setup(|app| {
+            // Watching processes is how every platform gets a play history,
+            // so it starts with the app rather than with the first scan.
+            if let Ok(dir) = app.path().app_data_dir() {
+                let handle = app.handle().clone();
+                playtime::watch(dir, move || {
+                    handle
+                        .state::<Library>()
+                        .0
+                        .lock()
+                        .map(|library| library.games.clone())
+                        .unwrap_or_default()
+                });
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             load_cached_library,
             scan_library,
             fetch_catalog,
             launch_game,
             open_install_dir,
+            refresh_playtime,
             list_collections,
             create_collection,
             rename_collection,

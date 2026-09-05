@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchCatalog, loadCachedLibrary, scanLibrary } from "../lib/api";
+import {
+  fetchCatalog,
+  loadCachedLibrary,
+  refreshPlaytime,
+  scanLibrary,
+} from "../lib/api";
 import type { ScanResult } from "../types";
 
 type Status = "idle" | "scanning" | "fetching-catalog";
@@ -49,6 +54,21 @@ export function useLibrary() {
       cancelled = true;
     };
   }, [refresh]);
+
+  // Coming back to the window is exactly when a play session has just ended,
+  // and re-reading the session log is far cheaper than a full sync.
+  useEffect(() => {
+    const onFocus = () => {
+      if (running.current) return;
+      void refreshPlaytime()
+        .then(setResult)
+        .catch(() => {
+          // Nothing scanned yet; the next sync will carry the sessions.
+        });
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
 
   return { result, status, error, refresh };
 }

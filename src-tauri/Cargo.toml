@@ -32,4 +32,5 @@ windows-sys = { version = "0.61.2", features = ["Win32_UI_Shell", "Win32_Foundat
 base64 = "0.23.1"
 tauri-plugin-updater = "2.11.0"
 tauri-plugin-process = "2.3.1"
+sysinfo = { version = "0.38.4", default-features = false, features = ["system"] }
 

@@ -12,6 +12,8 @@ export interface Game {
   installDir: string | null;
   sizeOnDisk: number | null;
   lastPlayed: number | null;
+  /** Seconds played, as measured by GAMLIB itself. */
+  playtimeSeconds: number | null;
   coverPath: string | null;
   coverUrls: string[];
   /** Launches the game, or installs it. The backend decides which. */
@@ -73,11 +75,12 @@ export const PLATFORM_COLORS: Record<Platform, string> = {
   ubisoft: "#2f7bff",
 };
 
-export type SortKey = "name" | "lastPlayed" | "size";
+export type SortKey = "name" | "lastPlayed" | "playtime" | "size";
 
 export const SORT_LABELS: Record<SortKey, string> = {
   name: "Nom",
   lastPlayed: "Dernière session",
+  playtime: "Temps de jeu",
   size: "Taille",
 };
 
