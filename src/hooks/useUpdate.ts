@@ -16,6 +16,12 @@ export type UpdatePhase =
 const RECHECK_INTERVAL_MS = 30 * 60 * 1000;
 
 /**
+ * Floor between two checks. Alt-tabbing is frequent; asking GitHub every time
+ * would be rude, and a release is never that urgent.
+ */
+const MIN_CHECK_GAP_MS = 2 * 60 * 1000;
+
+/**
  * Keeping the application up to date.
  *
  * The two moments are treated differently on purpose. At startup nothing is
@@ -33,6 +39,7 @@ export function useUpdate(onError: (message: string) => void) {
   const [phase, setPhase] = useState<UpdatePhase>("checking");
   const [progress, setProgress] = useState(0);
   const busy = useRef(false);
+  const lastCheck = useRef(0);
 
   const download = useCallback(
     async (target: Update) => {
@@ -91,22 +98,36 @@ export function useUpdate(onError: (message: string) => void) {
     };
   }, [download]);
 
-  // Later looks, while the application is in use: announce, never interrupt.
-  useEffect(() => {
-    const timer = setInterval(() => {
-      if (busy.current) return;
-      void check()
-        .then((found) => {
-          if (!found) return;
-          setUpdate(found);
-          setPhase("available");
-        })
-        .catch(() => {
-          // Same silence as the first check.
-        });
-    }, RECHECK_INTERVAL_MS);
-    return () => clearInterval(timer);
+  /** A later look: announce what it finds, never interrupt. */
+  const checkNow = useCallback(async (force = false) => {
+    if (busy.current) return;
+    const now = Date.now();
+    if (!force && now - lastCheck.current < MIN_CHECK_GAP_MS) return;
+    lastCheck.current = now;
+
+    try {
+      const found = await check();
+      if (!found) return;
+      setUpdate(found);
+      setPhase("available");
+    } catch {
+      // Same silence as the first check.
+    }
   }, []);
+
+  // Returning to the window is the moment a release is most likely to have
+  // appeared since anyone last looked, and it costs one request.
+  useEffect(() => {
+    const onFocus = () => void checkNow();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [checkNow]);
+
+  // Backstop for a window nobody ever leaves.
+  useEffect(() => {
+    const timer = setInterval(() => void checkNow(), RECHECK_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [checkNow]);
 
   return {
     phase,
@@ -114,5 +135,7 @@ export function useUpdate(onError: (message: string) => void) {
     notes: update?.body ?? null,
     progress,
     install: () => (update ? download(update) : Promise.resolve()),
+    /** Forced by the sync button, which is the one place a user asks. */
+    checkNow: () => checkNow(true),
   };
 }

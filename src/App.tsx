@@ -335,7 +335,10 @@ export default function App() {
         sort={sort}
         onSortChange={setSort}
         syncing={status !== "idle"}
-        onSync={() => void refresh()}
+        onSync={() => {
+          void refresh();
+          void update.checkNow();
+        }}
         syncedAt={result?.scannedAt ?? null}
         errors={result?.errors ?? []}
         hiddenCount={hiddenCount}
