@@ -93,21 +93,19 @@ export function useGridKeys({
         // Escape leaves a field rather than being swallowed by it.
         if (event.key === "Escape") target?.blur();
 
-        // Type, then Enter, then playing: that sequence is the whole point of
-        // a launcher, and it has to work without ever leaving the search box.
-        if (target?.id === SEARCH_INPUT_ID && games.length > 0) {
-          if (event.key === "Enter") {
-            event.preventDefault();
-            onSelect(games[0].id);
-            onLaunch(games[0]);
-          }
-          // Down arrow steps out of the field into the results, so the search
-          // is a way in to the grid rather than a dead end.
-          if (event.key === "ArrowDown") {
-            event.preventDefault();
-            target.blur();
-            onSelect(games[0].id);
-          }
+        // Down arrow steps out of the filter field into the results, so the
+        // field is a way in to the grid rather than a dead end. Enter is
+        // deliberately not bound: this field narrows the grid, and launching
+        // from a control that only says « Filtrer » would be a trap. The
+        // palette is where typing ends in a game starting.
+        if (
+          target?.id === SEARCH_INPUT_ID &&
+          games.length > 0 &&
+          event.key === "ArrowDown"
+        ) {
+          event.preventDefault();
+          target.blur();
+          onSelect(games[0].id);
         }
         return;
       }

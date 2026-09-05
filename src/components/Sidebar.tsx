@@ -1,22 +1,15 @@
-import { useEffect, useState, type MouseEvent } from "react";
-import { formatAgo } from "../lib/format";
+import { useState, type MouseEvent } from "react";
 import {
-  INSTALL_FILTERS,
-  INSTALL_FILTER_LABELS,
   PLATFORMS,
   PLATFORM_COLORS,
   PLATFORM_LABELS,
-  SORT_LABELS,
   selectionKey,
   type Collection,
   type Game,
-  type InstallFilter,
   type ScanError,
   type Selection,
-  type SortKey,
 } from "../types";
-import { SEARCH_INPUT_ID } from "../hooks/useGridKeys";
-import { Kbd } from "./Kbd";
+import { KbdHint } from "./Kbd";
 import { PlatformIcon } from "./PlatformIcon";
 
 interface Props {
@@ -33,34 +26,9 @@ interface Props {
   onGameContextMenu: (game: Game, event: MouseEvent) => void;
   onCollectionContextMenu: (collection: Collection, event: MouseEvent) => void;
   onNewCollection: () => void;
-  installFilter: InstallFilter;
-  onInstallFilterChange: (filter: InstallFilter) => void;
-  installCounts: Record<InstallFilter, number>;
-  query: string;
-  /** Name of the game Enter would start, so the shortcut is never a guess. */
-  enterTarget: string | null;
-  onQueryChange: (query: string) => void;
-  sort: SortKey;
-  onSortChange: (sort: SortKey) => void;
-  syncing: boolean;
-  onSync: () => void;
-  /** Unix epoch seconds of the last completed sync, if any. */
-  syncedAt: number | null;
   errors: ScanError[];
   /** Total hidden games, counted outside the current view. */
   hiddenCount: number;
-}
-
-/**
- * Re-renders once a minute so the sync stamp does not sit on "à l'instant"
- * for an app that has been open all afternoon.
- */
-function useMinuteTick() {
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    const timer = setInterval(() => setTick((n) => n + 1), 60_000);
-    return () => clearInterval(timer);
-  }, []);
 }
 
 function SectionLabel({
@@ -194,23 +162,10 @@ export function Sidebar({
   onGameContextMenu,
   onCollectionContextMenu,
   onNewCollection,
-  installFilter,
-  onInstallFilterChange,
-  installCounts,
-  query,
-  enterTarget,
-  onQueryChange,
-  sort,
-  onSortChange,
-  syncing,
-  onSync,
-  syncedAt,
   errors,
   hiddenCount,
 }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  useMinuteTick();
-  const lastSync = formatAgo(syncedAt);
 
   const toggle = (key: string) =>
     setExpanded((current) => {
@@ -238,65 +193,10 @@ export function Sidebar({
 
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-line bg-surface-1">
-      {/* Le nom et la mise a jour vivent desormais dans la barre de titre :
-          la barre laterale commence donc par ce qu'elle sert a faire. */}
-      <div className="flex flex-col gap-3 p-4 pt-3 pb-2">
-        <div className="relative">
-          <input
-            id={SEARCH_INPUT_ID}
-            type="search"
-            value={query}
-            onChange={(event) => onQueryChange(event.target.value)}
-            placeholder="Filtrer la grille…"
-            className="w-full rounded-md border border-line bg-surface-2 py-1.5 pr-9 pl-3 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
-          />
-          {/* Ce champ filtre la grille ; le lancement rapide appartient
-              désormais à la palette, donc le slot ne porte plus que la sortie
-              de recherche. */}
-          {query !== "" && (
-            <button
-              type="button"
-              onClick={() => onQueryChange("")}
-              aria-label="Effacer la recherche"
-              title="Effacer la recherche"
-              className="absolute top-1/2 right-2 flex size-5 -translate-y-1/2 items-center justify-center rounded text-sm leading-none text-ink-faint transition hover:bg-surface-3 hover:text-ink"
-            >
-              ✕
-            </button>
-          )}
-        </div>
-
-        {/* Naming what Enter will start removes the guesswork: the shortcut is
-            only worth using if you know where it lands. */}
-        {query !== "" && enterTarget && (
-          <p className="-mt-1.5 flex items-center gap-1.5 px-0.5 text-[11px] text-ink-faint">
-            <Kbd>↵</Kbd>
-            <span className="truncate">{enterTarget}</span>
-          </p>
-        )}
-
-        {/* Owned games outnumber installed ones several times over, so this
-            decides what the whole sidebar is about. */}
-        <div className="flex rounded-md border border-line bg-surface-2 p-0.5">
-          {INSTALL_FILTERS.map((filter) => (
-            <button
-              key={filter}
-              type="button"
-              onClick={() => onInstallFilterChange(filter)}
-              title={`${INSTALL_FILTER_LABELS[filter]} — ${installCounts[filter]} jeux`}
-              className={`flex-1 rounded px-1 py-1 text-[11px] font-medium transition ${
-                installFilter === filter
-                  ? "bg-surface-3 text-ink"
-                  : "text-ink-muted hover:text-ink"
-              }`}
-            >
-              {INSTALL_FILTER_LABELS[filter]}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <nav className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+      {/* Ne reste que la navigation : quel ensemble on regarde. Comment on le
+          regarde — filtre, installés, tri — appartient a la barre au-dessus de
+          la grille, et la synchronisation a la barre de titre. */}
+      <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
         <GroupRow
           label="Tous les jeux"
           count={String(games.length)}
@@ -402,23 +302,6 @@ export function Sidebar({
       </nav>
 
       <div className="flex flex-col gap-3 border-t border-line p-4">
-        <label className="flex items-center gap-2">
-          <span className="text-[10px] tracking-widest text-ink-faint uppercase">
-            Tri
-          </span>
-          <select
-            value={sort}
-            onChange={(event) => onSortChange(event.target.value as SortKey)}
-            className="flex-1 rounded-md border border-line bg-surface-2 px-2 py-1 text-xs text-ink focus:border-accent focus:outline-none"
-          >
-            {Object.entries(SORT_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-
         {errors.length > 0 && (
           <ul className="flex flex-col gap-1.5 rounded-md border border-line bg-surface-2 p-2.5">
             {errors.map((error) => (
@@ -432,21 +315,13 @@ export function Sidebar({
           </ul>
         )}
 
-        <div className="flex flex-col gap-1">
-          <button
-            type="button"
-            onClick={onSync}
-            disabled={syncing}
-            title="La synchronisation se fait aussi automatiquement à chaque démarrage."
-            className="w-full rounded-md border border-line bg-surface-2 py-2 text-sm text-ink-muted transition hover:border-accent hover:text-ink disabled:cursor-progress disabled:opacity-60"
-          >
-            {syncing ? "Synchronisation…" : "Sync"}
-          </button>
-          {lastSync && !syncing && (
-            <p className="text-center text-[10px] text-ink-faint">
-              Dernière sync {lastSync}
-            </p>
-          )}
+        {/* Le bas de la barre laterale etait occupe par le bouton Sync ; il
+            revient aux raccourcis, qui n'avaient nulle part ou tenir une fois
+            l'en-tete de la grille rempli. */}
+        <div className="flex flex-col gap-1.5 text-[11px]">
+          <KbdHint keys={["←", "↑", "↓", "→"]} label="naviguer" />
+          <KbdHint keys={["↵"]} label="lancer" />
+          <KbdHint keys={["Ctrl", "K"]} label="rechercher" />
         </div>
       </div>
     </aside>

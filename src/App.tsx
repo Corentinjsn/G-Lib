@@ -9,12 +9,12 @@ import {
 import { ContextMenu, type MenuState } from "./components/ContextMenu";
 import { GameDetail } from "./components/GameDetail";
 import { GameGrid } from "./components/GameGrid";
-import { KbdHint } from "./components/Kbd";
 import { NameDialog } from "./components/NameDialog";
 import { Palette, type PaletteAction } from "./components/Palette";
 import { Sidebar } from "./components/Sidebar";
 import { Splash, type SplashStep } from "./components/Splash";
 import { TitleBar } from "./components/TitleBar";
+import { ViewBar } from "./components/ViewBar";
 import { useCollections } from "./hooks/useCollections";
 import { useGridKeys } from "./hooks/useGridKeys";
 import { useLibrary } from "./hooks/useLibrary";
@@ -408,6 +408,11 @@ export default function App() {
   // La barre de titre est rendue avant tout le reste, y compris pendant le
   // splash : la fenetre n'a plus de decoration systeme, donc c'est le seul
   // endroit d'ou on peut la deplacer ou la fermer.
+  const sync = () => {
+    void refresh();
+    void update.checkNow();
+  };
+
   const titleBar = (
     <TitleBar
       // Reste affichée pendant le téléchargement, qui porte sa progression.
@@ -419,6 +424,9 @@ export default function App() {
       updateDownloading={update.phase === "downloading"}
       updateProgress={update.progress}
       onInstallUpdate={() => void update.install()}
+      syncing={status !== "idle"}
+      onSync={sync}
+      syncedAt={result?.scannedAt ?? null}
     />
   );
 
@@ -453,47 +461,29 @@ export default function App() {
           onGameContextMenu={openGameMenu}
           onCollectionContextMenu={openCollectionMenu}
           onNewCollection={() => setDialog({ mode: "create" })}
-          installFilter={installFilter}
-          onInstallFilterChange={setInstallFilter}
-          installCounts={counts}
-          enterTarget={visible[0]?.name ?? null}
-          query={query}
-          onQueryChange={setQuery}
-          sort={sort}
-          onSortChange={setSort}
-          syncing={status !== "idle"}
-          onSync={() => {
-            void refresh();
-            void update.checkNow();
-          }}
-          syncedAt={result?.scannedAt ?? null}
           errors={result?.errors ?? []}
           hiddenCount={hiddenCount}
         />
 
         <main className="flex min-w-0 flex-1 flex-col">
-          <header className="flex items-center justify-between border-b border-line px-6 py-3">
-            <span className="text-sm text-ink-muted">
-              {visible.length} {visible.length > 1 ? "jeux" : "jeu"}
-              <span className="text-ink-faint"> · {scopeLabel}</span>
-            </span>
-            {status !== "idle" ? (
-              <span className="text-xs text-ink-faint">
-                {status === "scanning"
-                  ? "Lecture des launchers…"
-                  : "Catalogue en ligne…"}
-              </span>
-            ) : (
-              // Sits where the sync status goes, so the header never carries two
-              // competing messages. Dropped on narrow windows.
-              <span className="hidden items-center gap-4 text-[11px] lg:flex">
-                <KbdHint keys={["←", "↑", "↓", "→"]} label="naviguer" />
-                <KbdHint keys={["↵"]} label="lancer" />
-                {/* Une palette qu'on ne sait pas ouvrir n'existe pas. */}
-                <KbdHint keys={["Ctrl", "K"]} label="rechercher" />
-              </span>
-            )}
-          </header>
+          <ViewBar
+            count={visible.length}
+            scopeLabel={scopeLabel}
+            status={
+              status === "scanning"
+                ? "Lecture des launchers…"
+                : status === "fetching-catalog"
+                  ? "Catalogue en ligne…"
+                  : null
+            }
+            query={query}
+            onQueryChange={setQuery}
+            installFilter={installFilter}
+            onInstallFilterChange={setInstallFilter}
+            installCounts={counts}
+            sort={sort}
+            onSortChange={setSort}
+          />
 
           <div ref={gridScroll} className="min-h-0 flex-1 overflow-y-auto">
             {visible.length > 0 ? (
