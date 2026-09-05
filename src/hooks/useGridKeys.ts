@@ -10,6 +10,8 @@ interface Options {
   onSelect: (id: string) => void;
   onLaunch: (game: Game) => void;
   onToggleFavorite: (game: Game) => void;
+  /** Raises the launch palette, or dismisses it; bound to `/` and Ctrl+K. */
+  onTogglePalette: () => void;
   /** The scroll container holding the grid, used to count its columns. */
   gridRef: RefObject<HTMLElement | null>;
   /** Suspended while a menu or dialog owns the keyboard. */
@@ -42,6 +44,7 @@ export function useGridKeys({
   onSelect,
   onLaunch,
   onToggleFavorite,
+  onTogglePalette,
   gridRef,
   enabled,
 }: Options) {
@@ -53,6 +56,15 @@ export function useGridKeys({
         target instanceof HTMLSelectElement ||
         target instanceof HTMLTextAreaElement ||
         target?.isContentEditable === true;
+
+      // Ctrl+K reaches the palette from anywhere, including from inside a
+      // field: it is the one shortcut that must never be swallowed. Pressed
+      // again it puts the palette away, so the same key undoes itself.
+      if (event.key === "k" && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        onTogglePalette();
+        return;
+      }
 
       if (typing) {
         // Escape leaves a field rather than being swallowed by it.
@@ -78,9 +90,12 @@ export function useGridKeys({
       }
       if (!enabled) return;
 
+      // `/` used to focus the sidebar field, which searched only what the
+      // current filter allowed. It opens the palette instead: the fast path to
+      // a game should not depend on where you happen to be standing.
       if (event.key === "/") {
         event.preventDefault();
-        document.getElementById(SEARCH_INPUT_ID)?.focus();
+        onTogglePalette();
         return;
       }
 
@@ -133,5 +148,14 @@ export function useGridKeys({
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [games, selectedId, onSelect, onLaunch, onToggleFavorite, gridRef, enabled]);
+  }, [
+    games,
+    selectedId,
+    onSelect,
+    onLaunch,
+    onToggleFavorite,
+    onTogglePalette,
+    gridRef,
+    enabled,
+  ]);
 }

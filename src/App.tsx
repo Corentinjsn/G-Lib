@@ -11,6 +11,7 @@ import { GameDetail } from "./components/GameDetail";
 import { GameGrid } from "./components/GameGrid";
 import { KbdHint } from "./components/Kbd";
 import { NameDialog } from "./components/NameDialog";
+import { Palette } from "./components/Palette";
 import { Sidebar } from "./components/Sidebar";
 import { Splash, type SplashStep } from "./components/Splash";
 import { useCollections } from "./hooks/useCollections";
@@ -71,6 +72,7 @@ export default function App() {
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const gridScroll = useRef<HTMLDivElement>(null);
 
   const showError = useCallback((message: string) => setToast(message), []);
@@ -332,9 +334,11 @@ export default function App() {
     onLaunch: handleLaunch,
     onToggleFavorite: (game: Game) =>
       void toggleFlag(game, "favorite", !game.favorite),
+    onTogglePalette: () => setPaletteOpen((open) => !open),
     gridRef: gridScroll,
-    // A context menu or a dialog owns the keyboard while it is open.
-    enabled: menu === null && dialog === null,
+    // A context menu, a dialog or the palette owns the keyboard while it is
+    // open; the palette runs its own arrows over its own results.
+    enabled: menu === null && dialog === null && !paletteOpen,
   });
 
   if (!ready) {
@@ -408,6 +412,8 @@ export default function App() {
             <span className="hidden items-center gap-4 text-[11px] lg:flex">
               <KbdHint keys={["←", "↑", "↓", "→"]} label="naviguer" />
               <KbdHint keys={["↵"]} label="lancer" />
+              {/* Une palette qu'on ne sait pas ouvrir n'existe pas. */}
+              <KbdHint keys={["Ctrl", "K"]} label="rechercher" />
             </span>
           )}
         </header>
@@ -439,6 +445,16 @@ export default function App() {
           onToggleFavorite={() =>
             void toggleFlag(selected, "favorite", !selected.favorite)
           }
+        />
+      )}
+
+      {/* Cherche dans toute la bibliothèque, filtres de la barre latérale
+          compris : c'est le chemin vers un jeu qu'on ne voit pas. */}
+      {paletteOpen && (
+        <Palette
+          games={allGames}
+          onLaunch={handleLaunch}
+          onClose={() => setPaletteOpen(false)}
         />
       )}
 

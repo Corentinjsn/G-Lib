@@ -107,3 +107,59 @@ export function installCounts(games: Game[]): InstallCounts {
     notInstalled: visible.length - installed,
   };
 }
+
+/* ------------------------------------------------------------------ palette */
+
+/**
+ * How well a name answers a query, lower being better.
+ *
+ * Three tiers rather than a fuzzy score: a launcher's job is to put the title
+ * you are already thinking of under the cursor, and titles you know are typed
+ * from their start. A points-based fuzzy match would let a scattering of
+ * letters outrank a clean prefix, which is exactly the surprise you cannot
+ * afford when Enter launches immediately.
+ */
+export function paletteRank(name: string, needle: string): number | null {
+  const haystack = normalize(name);
+  const index = haystack.indexOf(needle);
+  if (index < 0) return null;
+  if (index === 0) return 0;
+  // A word start: "ring" should find "Elden Ring", but "ing" should not rank
+  // it above a title that opens with those letters.
+  return /[\s:_\-–—.'"([]/.test(haystack[index - 1]) ? 1 : 2;
+}
+
+/**
+ * The palette's results: the whole library, installed first.
+ *
+ * Deliberately ignores the sidebar — the palette is the way to reach a game
+ * you cannot see, so a filter chosen minutes ago must not hide it. Hidden
+ * games stay hidden: that flag is a decision about the library, not a view.
+ */
+export function searchPalette(
+  games: Game[],
+  query: string,
+  limit = 40,
+): Game[] {
+  const needle = normalize(query.trim());
+  const pool = games.filter((game) => !game.hidden);
+
+  const ranked = needle
+    ? pool.flatMap((game) => {
+        const rank = paletteRank(game.name, needle);
+        return rank === null ? [] : [{ game, rank }];
+      })
+    : // An empty field is the "resume something" case, so it offers what was
+      // played most recently rather than the alphabet.
+      pool.map((game) => ({ game, rank: 0 }));
+
+  ranked.sort((a, b) => {
+    if (a.game.installed !== b.game.installed) return a.game.installed ? -1 : 1;
+    if (a.rank !== b.rank) return a.rank - b.rank;
+    const played = (b.game.lastPlayed ?? 0) - (a.game.lastPlayed ?? 0);
+    if (played !== 0) return played;
+    return a.game.name.localeCompare(b.game.name, "fr");
+  });
+
+  return ranked.slice(0, needle ? limit : 8).map((entry) => entry.game);
+}
