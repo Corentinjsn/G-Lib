@@ -27,12 +27,12 @@ function EmptyState({ scanning }: { scanning: boolean }) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
       <p className="text-sm text-ink-muted">
-        {scanning ? "Analyse des launchers…" : "Aucun jeu ne correspond."}
+        {scanning ? "Synchronisation…" : "Aucun jeu ne correspond."}
       </p>
       {!scanning && (
         <p className="max-w-xs text-xs text-ink-faint">
-          Vérifiez vos filtres, ou relancez une analyse si vous venez
-          d'installer un jeu.
+          Vérifiez vos filtres, ou lancez un sync si vous venez d'installer un
+          jeu.
         </p>
       )}
     </div>
@@ -272,8 +272,9 @@ export default function App() {
         onQueryChange={setQuery}
         sort={sort}
         onSortChange={setSort}
-        scanning={status !== "idle"}
-        onRefresh={() => void refresh()}
+        syncing={status !== "idle"}
+        onSync={() => void refresh()}
+        syncedAt={result?.scannedAt ?? null}
         errors={result?.errors ?? []}
       />
 
@@ -286,8 +287,8 @@ export default function App() {
           {status !== "idle" && (
             <span className="text-xs text-ink-faint">
               {status === "scanning"
-                ? "Analyse des launchers…"
-                : "Récupération du catalogue…"}
+                ? "Lecture des launchers…"
+                : "Catalogue en ligne…"}
             </span>
           )}
         </header>
