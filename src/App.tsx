@@ -11,7 +11,7 @@ import { GameDetail } from "./components/GameDetail";
 import { GameGrid } from "./components/GameGrid";
 import { KbdHint } from "./components/Kbd";
 import { NameDialog } from "./components/NameDialog";
-import { Palette } from "./components/Palette";
+import { Palette, type PaletteAction } from "./components/Palette";
 import { Sidebar } from "./components/Sidebar";
 import { Splash, type SplashStep } from "./components/Splash";
 import { useCollections } from "./hooks/useCollections";
@@ -263,6 +263,64 @@ export default function App() {
     });
   };
 
+  /**
+   * The same repertoire as the right-click menu, for the palette's second
+   * level. Built here rather than inside the palette so there is one place
+   * that decides what can be done to a game.
+   *
+   * Order matters: the highlight lands on the first entry, so playing is first
+   * and the destructive one is last.
+   */
+  const paletteActions = (game: Game): PaletteAction[] => [
+    {
+      label: game.installed ? "Jouer" : "Installer",
+      run: () => handleLaunch(game),
+    },
+    ...(game.installed
+      ? [{ label: "Ouvrir le dossier", run: () => handleOpenFolder(game) }]
+      : []),
+    { label: "Voir les détails", run: () => setSelectedId(game.id) },
+    {
+      label: "Favori",
+      star: game.favorite,
+      keepOpen: true,
+      run: () => void toggleFlag(game, "favorite", !game.favorite),
+    },
+    {
+      label: "Masquer",
+      checked: game.hidden,
+      keepOpen: true,
+      run: () => void toggleFlag(game, "hidden", !game.hidden),
+    },
+    ...collections.collections.map((collection) => ({
+      label: collection.name,
+      checked: collection.gameIds.includes(game.id),
+      keepOpen: true,
+      run: () =>
+        void collections.setMembership(
+          collection.id,
+          game.id,
+          !collection.gameIds.includes(game.id),
+        ),
+    })),
+    // Sans cela, la palette permettrait de classer un jeu dans une liste
+    // existante mais jamais d'en ouvrir une.
+    {
+      label: "Nouvelle liste…",
+      run: () => setDialog({ mode: "create", gameId: game.id }),
+    },
+    // Absente pour Epic, qui ne publie aucune désinstallation.
+    ...(game.installed && game.uninstall
+      ? [
+          {
+            label: "Désinstaller…",
+            danger: true,
+            run: () => handleUninstall(game),
+          },
+        ]
+      : []),
+  ];
+
   const openCollectionMenu = (collection: Collection, event: MouseEvent) => {
     event.preventDefault();
     setMenu({
@@ -453,6 +511,7 @@ export default function App() {
       {paletteOpen && (
         <Palette
           games={allGames}
+          actionsFor={paletteActions}
           onLaunch={handleLaunch}
           onClose={() => setPaletteOpen(false)}
         />
