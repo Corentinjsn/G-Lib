@@ -9,6 +9,7 @@ import {
 import { ContextMenu, type MenuState } from "./components/ContextMenu";
 import { GameDetail } from "./components/GameDetail";
 import { GameGrid } from "./components/GameGrid";
+import { KbdHint } from "./components/Kbd";
 import { NameDialog } from "./components/NameDialog";
 import { Sidebar } from "./components/Sidebar";
 import { Splash, type SplashStep } from "./components/Splash";
@@ -17,7 +18,12 @@ import { useGridKeys } from "./hooks/useGridKeys";
 import { useLibrary } from "./hooks/useLibrary";
 import { useUpdate } from "./hooks/useUpdate";
 import { launchGame, openInstallDir, setGameFlag } from "./lib/api";
-import { normalize } from "./lib/format";
+import {
+  inInstallFilter,
+  installCounts,
+  selectGames,
+  universe,
+} from "./lib/library";
 import {
   INSTALL_FILTER_LABELS,
   PLATFORM_LABELS,
@@ -95,83 +101,39 @@ export default function App() {
     () => allGames.filter((game) => game.hidden).length,
     [allGames],
   );
-
-  /* Hidden games are absent from every view but their own, so this comes
-     before the install filter and before any selection. */
-  const games = useMemo(
-    () =>
-      selection.kind === "hidden"
-        ? allGames.filter((game) => game.hidden)
-        : allGames.filter((game) => !game.hidden),
-    [allGames, selection.kind],
+  const counts = useMemo(() => installCounts(allGames), [allGames]);
+  const unhidden = useMemo(
+    () => universe(allGames, { kind: "all" }),
+    [allGames],
   );
 
-  const installCounts = useMemo(() => {
-    const installed = games.filter((game) => game.installed).length;
-    return {
-      installed,
-      all: games.length,
-      notInstalled: games.length - installed,
-    };
-  }, [games]);
-
-  /** The install filter comes first: everything else counts within it. */
+  /** What the sidebar groups and counts over: the universe minus the install
+      filter, but before any selection — a platform row has to keep its count
+      whichever platform is currently selected. */
   const scoped = useMemo(
     () =>
-      games.filter((game) =>
-        installFilter === "all"
-          ? true
-          : game.installed === (installFilter === "installed"),
+      universe(allGames, selection).filter((game) =>
+        inInstallFilter(game, installFilter),
       ),
-    [games, installFilter],
+    [allGames, selection, installFilter],
   );
 
-  const visible = useMemo(() => {
-    const needle = normalize(query.trim());
-    const inSelection = (game: Game) => {
-      switch (selection.kind) {
-        case "favorites":
-          return game.favorite;
-        // The hidden view is already the whole universe here.
-        case "hidden":
-          return true;
-        case "platform":
-          return game.platform === selection.platform;
-        case "collection": {
-          const list = collections.collections.find(
-            (entry) => entry.id === selection.id,
-          );
-          return list?.gameIds.includes(game.id) ?? false;
-        }
-        default:
-          return true;
-      }
-    };
-
-    const filtered = scoped.filter(
-      (game) =>
-        inSelection(game) &&
-        (needle === "" || normalize(game.name).includes(needle)),
-    );
-
-    return filtered.sort((a, b) => {
-      switch (sort) {
-        case "lastPlayed":
-          // Never-played titles sink below everything with a timestamp.
-          return (b.lastPlayed ?? 0) - (a.lastPlayed ?? 0);
-        case "size":
-          return (b.sizeOnDisk ?? 0) - (a.sizeOnDisk ?? 0);
-        default:
-          return a.name.localeCompare(b.name, "fr");
-      }
-    });
-  }, [scoped, selection, collections.collections, query, sort]);
+  const visible = useMemo(
+    () =>
+      selectGames(allGames, {
+        installFilter,
+        selection,
+        collections: collections.collections,
+        query,
+        sort,
+      }),
+    [allGames, installFilter, selection, collections.collections, query, sort],
+  );
 
   const selected = useMemo(
-    () => games.find((game) => game.id === selectedId) ?? null,
-    [games, selectedId],
+    () => allGames.find((game) => game.id === selectedId) ?? null,
+    [allGames, selectedId],
   );
-
   useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(null), 6000);
@@ -356,6 +318,7 @@ export default function App() {
     <div className="flex h-full">
       <Sidebar
         games={scoped}
+        unscopedGames={unhidden}
         collections={collections.collections}
         selection={selection}
         onSelectionChange={setSelection}
@@ -366,7 +329,7 @@ export default function App() {
         onNewCollection={() => setDialog({ mode: "create" })}
         installFilter={installFilter}
         onInstallFilterChange={setInstallFilter}
-        installCounts={installCounts}
+        installCounts={counts}
         query={query}
         onQueryChange={setQuery}
         sort={sort}
@@ -388,11 +351,18 @@ export default function App() {
             {visible.length} {visible.length > 1 ? "jeux" : "jeu"}
             <span className="text-ink-faint"> · {scopeLabel}</span>
           </span>
-          {status !== "idle" && (
+          {status !== "idle" ? (
             <span className="text-xs text-ink-faint">
               {status === "scanning"
                 ? "Lecture des launchers…"
                 : "Catalogue en ligne…"}
+            </span>
+          ) : (
+            // Sits where the sync status goes, so the header never carries two
+            // competing messages. Dropped on narrow windows.
+            <span className="hidden items-center gap-4 text-[11px] lg:flex">
+              <KbdHint keys={["←", "↑", "↓", "→"]} label="naviguer" />
+              <KbdHint keys={["↵"]} label="lancer" />
             </span>
           )}
         </header>

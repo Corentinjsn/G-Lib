@@ -26,6 +26,7 @@ pub fn now_epoch() -> i64 {
 /// entry in `errors`; it never costs us the other platforms' games.
 pub fn scan_all() -> ScanResult {
     let mut result = ScanResult {
+        schema_version: crate::models::SCHEMA_VERSION,
         scanned_at: now_epoch(),
         ..Default::default()
     };

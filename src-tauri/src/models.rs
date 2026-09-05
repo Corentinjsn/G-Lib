@@ -113,11 +113,22 @@ impl Game {
     }
 }
 
+/// Shape of the cached library on disk.
+///
+/// Bump this whenever `Game` gains, loses or repurposes a field. A cache
+/// written by an older shape is then discarded on purpose, instead of failing
+/// to deserialize and being dropped in silence — which is what happened twice
+/// while the model was still moving.
+pub const SCHEMA_VERSION: u32 = 1;
+
 /// Result of a full scan. Per-platform failures are reported rather than
 /// propagated, so one missing launcher never costs us the other three.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScanResult {
+    /// Zero when read from a cache written before versioning existed.
+    #[serde(default)]
+    pub schema_version: u32,
     pub games: Vec<Game>,
     pub errors: Vec<ScanError>,
     /// Unix epoch seconds of the scan that produced this.

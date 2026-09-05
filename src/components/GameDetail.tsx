@@ -1,6 +1,7 @@
 import { coverUrl } from "../lib/api";
 import { formatLastPlayed, formatPlaytime, formatSize } from "../lib/format";
 import { PLATFORM_LABELS, type Game } from "../types";
+import { Kbd } from "./Kbd";
 import { PlatformBadge } from "./PlatformBadge";
 
 interface Props {
@@ -62,9 +63,12 @@ export function GameDetail({ game, onClose, onLaunch, onOpenFolder }: Props) {
           <button
             type="button"
             onClick={onLaunch}
-            className="flex-1 rounded-md bg-accent py-2 text-sm font-semibold text-surface-0 transition hover:brightness-110"
+            className="flex flex-1 items-center justify-center gap-2 rounded-md bg-accent py-2 text-sm font-semibold text-surface-0 transition hover:brightness-110"
           >
             {game.installed ? "Jouer" : "Installer"}
+            <span className="opacity-70">
+              <Kbd>↵</Kbd>
+            </span>
           </button>
           {game.installed && (
             <button

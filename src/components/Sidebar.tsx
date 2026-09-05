@@ -15,11 +15,15 @@ import {
   type SortKey,
 } from "../types";
 import { SEARCH_INPUT_ID } from "../hooks/useGridKeys";
+import { Kbd } from "./Kbd";
 import { PlatformDot } from "./PlatformBadge";
 
 interface Props {
   /** Already narrowed by the install filter, so counts match what is shown. */
   games: Game[];
+  /** Every visible game, ignoring the install filter. Lets a list report how
+      many of its members the current view is leaving out. */
+  unscopedGames: Game[];
   collections: Collection[];
   selection: Selection;
   onSelectionChange: (selection: Selection) => void;
@@ -96,6 +100,7 @@ function GroupRow({
   label,
   count,
   active,
+  title,
   expanded,
   onToggle,
   onSelect,
@@ -103,8 +108,9 @@ function GroupRow({
   dot,
 }: {
   label: string;
-  count: number;
+  count: string;
   active: boolean;
+  title?: string;
   expanded?: boolean;
   onToggle?: () => void;
   onSelect: () => void;
@@ -133,6 +139,7 @@ function GroupRow({
         type="button"
         onClick={onSelect}
         onContextMenu={onContextMenu}
+        title={title}
         className="flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-2.5 text-left text-sm hover:text-ink"
       >
         {dot && <PlatformDot platform={dot} />}
@@ -177,6 +184,7 @@ function GameRow({
 }
 
 export function Sidebar({
+  unscopedGames,
   games,
   collections,
   selection,
@@ -241,14 +249,22 @@ export function Sidebar({
           <span className="text-[10px] text-ink-faint">v{__APP_VERSION__}</span>
         </div>
 
-        <input
-          id={SEARCH_INPUT_ID}
-          type="search"
-          value={query}
-          onChange={(event) => onQueryChange(event.target.value)}
-          placeholder="Rechercher…  (/)"
-          className="w-full rounded-md border border-line bg-surface-2 px-3 py-1.5 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
-        />
+        <div className="relative">
+          <input
+            id={SEARCH_INPUT_ID}
+            type="search"
+            value={query}
+            onChange={(event) => onQueryChange(event.target.value)}
+            placeholder="Rechercher…"
+            className="peer w-full rounded-md border border-line bg-surface-2 py-1.5 pr-9 pl-3 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
+          />
+          {/* Hidden once the field is in use: the hint has done its job. */}
+          {query === "" && (
+            <span className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 peer-focus:hidden">
+              <Kbd>/</Kbd>
+            </span>
+          )}
+        </div>
 
         {/* Owned games outnumber installed ones several times over, so this
             decides what the whole sidebar is about. */}
@@ -274,13 +290,13 @@ export function Sidebar({
       <nav className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
         <GroupRow
           label="Tous les jeux"
-          count={games.length}
+          count={String(games.length)}
           active={active === "all"}
           onSelect={() => onSelectionChange({ kind: "all" })}
         />
         <GroupRow
           label="Favoris"
-          count={games.filter((game) => game.favorite).length}
+          count={String(games.filter((game) => game.favorite).length)}
           active={active === "favorites"}
           onSelect={() => onSelectionChange({ kind: "favorites" })}
         />
@@ -289,7 +305,7 @@ export function Sidebar({
         {hiddenCount > 0 && (
           <GroupRow
             label="Masqués"
-            count={hiddenCount}
+            count={String(hiddenCount)}
             active={active === "hidden"}
             onSelect={() => onSelectionChange({ kind: "hidden" })}
           />
@@ -314,11 +330,24 @@ export function Sidebar({
           collections.map((collection) => {
             const key = `collection:${collection.id}`;
             const members = inCollection(collection);
+            // A list of games the current filter excludes would otherwise read
+            // as empty, with nothing to say why.
+            const total = unscopedGames.filter((game) =>
+              collection.gameIds.includes(game.id),
+            ).length;
+            const partial = members.length !== total;
             return (
               <div key={collection.id}>
                 <GroupRow
                   label={collection.name}
-                  count={members.length}
+                  count={
+                    partial ? `${members.length} / ${total}` : String(total)
+                  }
+                  title={
+                    partial
+                      ? `${total} jeux dans cette liste, ${members.length} dans la vue actuelle`
+                      : undefined
+                  }
                   active={active === key}
                   expanded={expanded.has(key)}
                   onToggle={() => toggle(key)}
@@ -345,7 +374,7 @@ export function Sidebar({
             <div key={platform}>
               <GroupRow
                 label={PLATFORM_LABELS[platform]}
-                count={list.length}
+                count={String(list.length)}
                 active={active === key}
                 expanded={expanded.has(key)}
                 onToggle={() => toggle(key)}
