@@ -23,6 +23,33 @@ export interface ScanError {
   message: string;
 }
 
+/** A user-made list. A game may belong to any number of them. */
+export interface Collection {
+  id: string;
+  name: string;
+  gameIds: string[];
+}
+
+/** What the grid is currently showing. */
+export type Selection =
+  | { kind: "all" }
+  | { kind: "platform"; platform: Platform }
+  | { kind: "collection"; id: string };
+
+export const ALL_SELECTION: Selection = { kind: "all" };
+
+/** Stable key for a selection, used for comparison and for expanded state. */
+export function selectionKey(selection: Selection): string {
+  switch (selection.kind) {
+    case "platform":
+      return `platform:${selection.platform}`;
+    case "collection":
+      return `collection:${selection.id}`;
+    default:
+      return "all";
+  }
+}
+
 export interface ScanResult {
   games: Game[];
   errors: ScanError[];

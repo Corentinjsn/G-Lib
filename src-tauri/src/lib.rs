@@ -1,6 +1,7 @@
 mod artwork;
 mod binvdf;
 mod cache;
+mod collections;
 mod launcher;
 mod models;
 mod scanners;
@@ -121,6 +122,43 @@ fn open_install_dir(library: State<'_, Library>, id: String) -> Result<(), Strin
     launcher::open_folder(&dir).map_err(|e| format!("{e:#}"))
 }
 
+/// Every command below returns the full list, so the frontend never has to
+/// guess what the file now holds.
+#[tauri::command]
+fn list_collections(app: AppHandle) -> Result<Vec<collections::Collection>, String> {
+    Ok(collections::load(&data_dir(&app)?))
+}
+
+#[tauri::command]
+fn create_collection(app: AppHandle, name: String) -> Result<Vec<collections::Collection>, String> {
+    collections::create(&data_dir(&app)?, &name).map_err(|e| format!("{e:#}"))
+}
+
+#[tauri::command]
+fn rename_collection(
+    app: AppHandle,
+    id: String,
+    name: String,
+) -> Result<Vec<collections::Collection>, String> {
+    collections::rename(&data_dir(&app)?, &id, &name).map_err(|e| format!("{e:#}"))
+}
+
+#[tauri::command]
+fn delete_collection(app: AppHandle, id: String) -> Result<Vec<collections::Collection>, String> {
+    collections::delete(&data_dir(&app)?, &id).map_err(|e| format!("{e:#}"))
+}
+
+#[tauri::command]
+fn set_collection_membership(
+    app: AppHandle,
+    id: String,
+    game_id: String,
+    member: bool,
+) -> Result<Vec<collections::Collection>, String> {
+    collections::set_membership(&data_dir(&app)?, &id, &game_id, member)
+        .map_err(|e| format!("{e:#}"))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -131,7 +169,12 @@ pub fn run() {
             scan_library,
             fetch_catalog,
             launch_game,
-            open_install_dir
+            open_install_dir,
+            list_collections,
+            create_collection,
+            rename_collection,
+            delete_collection,
+            set_collection_membership
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

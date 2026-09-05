@@ -1,23 +1,27 @@
-import { useEffect, useMemo, useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { ContextMenu, type MenuState } from "./components/ContextMenu";
 import { GameDetail } from "./components/GameDetail";
 import { GameGrid } from "./components/GameGrid";
+import { NameDialog } from "./components/NameDialog";
 import { Sidebar } from "./components/Sidebar";
+import { useCollections } from "./hooks/useCollections";
 import { useLibrary } from "./hooks/useLibrary";
 import { launchGame, openInstallDir } from "./lib/api";
 import { normalize } from "./lib/format";
 import {
   INSTALL_FILTER_LABELS,
-  PLATFORMS,
+  PLATFORM_LABELS,
+  type Collection,
   type Game,
   type InstallFilter,
-  type Platform,
+  type Selection,
   type SortKey,
 } from "./types";
 
-const EMPTY_COUNTS = Object.fromEntries(
-  PLATFORMS.map((platform) => [platform, 0]),
-) as Record<Platform, number>;
+/** Which naming prompt is open, if any. */
+type Dialog =
+  | { mode: "create"; gameId?: string }
+  | { mode: "rename"; collection: Collection };
 
 function EmptyState({ scanning }: { scanning: boolean }) {
   return (
@@ -39,12 +43,16 @@ export default function App() {
   const { result, status, error, refresh } = useLibrary();
 
   const [query, setQuery] = useState("");
-  const [platform, setPlatform] = useState<Platform | null>(null);
   const [sort, setSort] = useState<SortKey>("name");
   const [installFilter, setInstallFilter] = useState<InstallFilter>("installed");
+  const [selection, setSelection] = useState<Selection>({ kind: "all" });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
+  const [dialog, setDialog] = useState<Dialog | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+
+  const showError = useCallback((message: string) => setToast(message), []);
+  const collections = useCollections(showError);
 
   const games = useMemo(() => result?.games ?? [], [result]);
 
@@ -61,22 +69,33 @@ export default function App() {
   const scoped = useMemo(
     () =>
       games.filter((game) =>
-        installFilter === "all" ? true : game.installed === (installFilter === "installed"),
+        installFilter === "all"
+          ? true
+          : game.installed === (installFilter === "installed"),
       ),
     [games, installFilter],
   );
 
-  const counts = useMemo(() => {
-    const tally = { ...EMPTY_COUNTS };
-    for (const game of scoped) tally[game.platform] += 1;
-    return tally;
-  }, [scoped]);
-
   const visible = useMemo(() => {
     const needle = normalize(query.trim());
+    const inSelection = (game: Game) => {
+      switch (selection.kind) {
+        case "platform":
+          return game.platform === selection.platform;
+        case "collection": {
+          const list = collections.collections.find(
+            (entry) => entry.id === selection.id,
+          );
+          return list?.gameIds.includes(game.id) ?? false;
+        }
+        default:
+          return true;
+      }
+    };
+
     const filtered = scoped.filter(
       (game) =>
-        (platform === null || game.platform === platform) &&
+        inSelection(game) &&
         (needle === "" || normalize(game.name).includes(needle)),
     );
 
@@ -91,7 +110,7 @@ export default function App() {
           return a.name.localeCompare(b.name, "fr");
       }
     });
-  }, [scoped, platform, query, sort]);
+  }, [scoped, selection, collections.collections, query, sort]);
 
   const selected = useMemo(
     () => games.find((game) => game.id === selectedId) ?? null,
@@ -127,23 +146,125 @@ export default function App() {
     void run(openInstallDir(game.id), "Impossible d'ouvrir le dossier");
   };
 
-  const handleContextMenu = (game: Game, event: MouseEvent) => {
+  const openGameMenu = (game: Game, event: MouseEvent) => {
     event.preventDefault();
     setSelectedId(game.id);
-    setMenu({ x: event.clientX, y: event.clientY, gameId: game.id });
+    setMenu({
+      x: event.clientX,
+      y: event.clientY,
+      heading: game.name,
+      items: [
+        {
+          label: game.installed ? "Jouer" : "Installer",
+          action: () => handleLaunch(game),
+        },
+        ...(game.installed
+          ? [
+              {
+                label: "Ouvrir le dossier",
+                action: () => handleOpenFolder(game),
+              },
+            ]
+          : []),
+        // Membership is a set of toggles rather than a submenu: a game can be
+        // in several lists, and this shows which at a glance.
+        ...collections.collections.map((collection, index) => ({
+          label: collection.name,
+          checked: collection.gameIds.includes(game.id),
+          divider: index === 0,
+          action: () => {
+            void collections.setMembership(
+              collection.id,
+              game.id,
+              !collection.gameIds.includes(game.id),
+            );
+            setMenu(null);
+          },
+        })),
+        {
+          label: "Nouvelle liste…",
+          divider: collections.collections.length === 0,
+          action: () => {
+            setMenu(null);
+            setDialog({ mode: "create", gameId: game.id });
+          },
+        },
+      ],
+    });
   };
 
-  const menuGame = menu
-    ? (games.find((game) => game.id === menu.gameId) ?? null)
-    : null;
+  const openCollectionMenu = (collection: Collection, event: MouseEvent) => {
+    event.preventDefault();
+    setMenu({
+      x: event.clientX,
+      y: event.clientY,
+      heading: collection.name,
+      items: [
+        {
+          label: "Renommer…",
+          action: () => {
+            setMenu(null);
+            setDialog({ mode: "rename", collection });
+          },
+        },
+        {
+          label: "Supprimer la liste",
+          action: () => {
+            setMenu(null);
+            // Dropping a list never touches the games in it.
+            if (selection.kind === "collection" && selection.id === collection.id) {
+              setSelection({ kind: "all" });
+            }
+            void collections.remove(collection.id);
+          },
+        },
+      ],
+    });
+  };
+
+  const confirmDialog = async (name: string) => {
+    const pending = dialog;
+    setDialog(null);
+    if (!pending) return;
+
+    if (pending.mode === "rename") {
+      await collections.rename(pending.collection.id, name);
+      return;
+    }
+
+    const lists = await collections.create(name);
+    const created = lists?.[lists.length - 1];
+    if (created && pending.gameId) {
+      await collections.setMembership(created.id, pending.gameId, true);
+    }
+  };
+
+  const scopeLabel = useMemo(() => {
+    switch (selection.kind) {
+      case "platform":
+        return PLATFORM_LABELS[selection.platform];
+      case "collection":
+        return (
+          collections.collections.find((entry) => entry.id === selection.id)
+            ?.name ?? "Liste"
+        );
+      default:
+        return INSTALL_FILTER_LABELS[installFilter].toLowerCase();
+    }
+  }, [selection, collections.collections, installFilter]);
 
   return (
     <div className="flex h-full">
       <Sidebar
-        counts={counts}
-        total={scoped.length}
-        platform={platform}
-        onPlatformChange={setPlatform}
+        games={scoped}
+        collections={collections.collections}
+        selection={selection}
+        onSelectionChange={setSelection}
+        selectedGameId={selectedId}
+        onSelectGame={(game) => setSelectedId(game.id)}
+        onGameContextMenu={openGameMenu}
+        onCollectionContextMenu={openCollectionMenu}
+        onNewCollection={() => setDialog({ mode: "create" })}
         installFilter={installFilter}
         onInstallFilterChange={setInstallFilter}
         installCounts={installCounts}
@@ -160,11 +281,7 @@ export default function App() {
         <header className="flex items-center justify-between border-b border-line px-6 py-3">
           <span className="text-sm text-ink-muted">
             {visible.length} {visible.length > 1 ? "jeux" : "jeu"}
-            {platform || query ? ` sur ${scoped.length}` : ""}
-            <span className="text-ink-faint">
-              {" "}
-              · {INSTALL_FILTER_LABELS[installFilter].toLowerCase()}
-            </span>
+            <span className="text-ink-faint"> · {scopeLabel}</span>
           </span>
           {status !== "idle" && (
             <span className="text-xs text-ink-faint">
@@ -182,7 +299,7 @@ export default function App() {
               selectedId={selectedId}
               onSelect={(game) => setSelectedId(game.id)}
               onLaunch={handleLaunch}
-              onContextMenu={handleContextMenu}
+              onContextMenu={openGameMenu}
             />
           ) : (
             <EmptyState scanning={status !== "idle"} />
@@ -199,13 +316,17 @@ export default function App() {
         />
       )}
 
-      {menu && menuGame && (
-        <ContextMenu
-          state={menu}
-          installed={menuGame.installed}
-          onClose={() => setMenu(null)}
-          onLaunch={() => handleLaunch(menuGame)}
-          onOpenFolder={() => handleOpenFolder(menuGame)}
+      {menu && <ContextMenu state={menu} onClose={() => setMenu(null)} />}
+
+      {dialog && (
+        <NameDialog
+          title={
+            dialog.mode === "rename" ? "Renommer la liste" : "Nouvelle liste"
+          }
+          initial={dialog.mode === "rename" ? dialog.collection.name : ""}
+          confirmLabel={dialog.mode === "rename" ? "Renommer" : "Créer"}
+          onCancel={() => setDialog(null)}
+          onConfirm={(name) => void confirmDialog(name)}
         />
       )}
 

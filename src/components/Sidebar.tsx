@@ -1,21 +1,34 @@
+import { useState, type MouseEvent } from "react";
 import {
   INSTALL_FILTERS,
   INSTALL_FILTER_LABELS,
   PLATFORMS,
   PLATFORM_LABELS,
   SORT_LABELS,
+  selectionKey,
+  type Collection,
+  type Game,
   type InstallFilter,
-  type Platform,
   type ScanError,
+  type Selection,
   type SortKey,
 } from "../types";
 import { PlatformDot } from "./PlatformBadge";
 
 interface Props {
-  counts: Record<Platform, number>;
-  total: number;
-  platform: Platform | null;
-  onPlatformChange: (platform: Platform | null) => void;
+  /** Already narrowed by the install filter, so counts match what is shown. */
+  games: Game[];
+  collections: Collection[];
+  selection: Selection;
+  onSelectionChange: (selection: Selection) => void;
+  selectedGameId: string | null;
+  onSelectGame: (game: Game) => void;
+  onGameContextMenu: (game: Game, event: MouseEvent) => void;
+  onCollectionContextMenu: (
+    collection: Collection,
+    event: MouseEvent,
+  ) => void;
+  onNewCollection: () => void;
   installFilter: InstallFilter;
   onInstallFilterChange: (filter: InstallFilter) => void;
   installCounts: Record<InstallFilter, number>;
@@ -28,41 +41,128 @@ interface Props {
   errors: ScanError[];
 }
 
-function FilterRow({
+function SectionLabel({
+  children,
+  action,
+}: {
+  children: string;
+  action?: { label: string; title: string; onClick: () => void };
+}) {
+  return (
+    <div className="flex items-center justify-between px-2.5 pt-4 pb-1">
+      <span className="text-[10px] tracking-widest text-ink-faint uppercase">
+        {children}
+      </span>
+      {action && (
+        <button
+          type="button"
+          onClick={action.onClick}
+          title={action.title}
+          aria-label={action.title}
+          className="rounded px-1 text-sm leading-none text-ink-faint transition hover:text-ink"
+        >
+          {action.label}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** A filter row that can also unfold to reveal the games it holds. */
+function GroupRow({
   label,
   count,
   active,
+  expanded,
+  onToggle,
+  onSelect,
+  onContextMenu,
   dot,
-  onClick,
 }: {
   label: string;
   count: number;
   active: boolean;
-  dot?: Platform;
-  onClick: () => void;
+  expanded?: boolean;
+  onToggle?: () => void;
+  onSelect: () => void;
+  onContextMenu?: (event: MouseEvent) => void;
+  dot?: Game["platform"];
+}) {
+  return (
+    <div
+      className={`flex items-center rounded-md transition ${
+        active ? "bg-surface-3 text-ink" : "text-ink-muted hover:bg-surface-2"
+      }`}
+    >
+      {onToggle ? (
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label={expanded ? "Replier" : "Déplier"}
+          className="w-5 shrink-0 py-1.5 text-[9px] text-ink-faint transition hover:text-ink"
+        >
+          {expanded ? "▾" : "▸"}
+        </button>
+      ) : (
+        <span className="w-5 shrink-0" />
+      )}
+      <button
+        type="button"
+        onClick={onSelect}
+        onContextMenu={onContextMenu}
+        className="flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-2.5 text-left text-sm hover:text-ink"
+      >
+        {dot && <PlatformDot platform={dot} />}
+        <span className="flex-1 truncate">{label}</span>
+        <span className="text-xs tabular-nums text-ink-faint">{count}</span>
+      </button>
+    </div>
+  );
+}
+
+function GameRow({
+  game,
+  active,
+  onSelect,
+  onContextMenu,
+}: {
+  game: Game;
+  active: boolean;
+  onSelect: () => void;
+  onContextMenu: (event: MouseEvent) => void;
 }) {
   return (
     <button
       type="button"
-      onClick={onClick}
-      className={`flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition ${
+      onClick={onSelect}
+      onContextMenu={onContextMenu}
+      title={game.name}
+      className={`flex w-full items-center gap-1.5 rounded py-1 pr-2 pl-7 text-left text-[13px] transition ${
         active
           ? "bg-surface-3 text-ink"
-          : "text-ink-muted hover:bg-surface-2 hover:text-ink"
+          : game.installed
+            ? "text-ink-muted hover:bg-surface-2 hover:text-ink"
+            : "text-ink-faint hover:bg-surface-2 hover:text-ink-muted"
       }`}
     >
-      {dot ? <PlatformDot platform={dot} /> : <span className="size-2" />}
-      <span className="flex-1 truncate text-left">{label}</span>
-      <span className="text-xs tabular-nums text-ink-faint">{count}</span>
+      <span className="truncate">{game.name}</span>
+      {!game.installed && (
+        <span className="ml-auto shrink-0 text-[10px] text-ink-faint">↓</span>
+      )}
     </button>
   );
 }
 
 export function Sidebar({
-  counts,
-  total,
-  platform,
-  onPlatformChange,
+  games,
+  collections,
+  selection,
+  onSelectionChange,
+  selectedGameId,
+  onSelectGame,
+  onGameContextMenu,
+  onCollectionContextMenu,
+  onNewCollection,
   installFilter,
   onInstallFilterChange,
   installCounts,
@@ -74,80 +174,160 @@ export function Sidebar({
   onRefresh,
   errors,
 }: Props) {
-  return (
-    <aside className="flex w-60 shrink-0 flex-col gap-4 border-r border-line bg-surface-1 p-4">
-      <div className="flex items-baseline gap-2">
-        <h1 className="font-display text-2xl leading-none font-semibold tracking-tight text-ink">
-          Gamlib
-        </h1>
-        <span className="text-[10px] text-ink-faint">v0.1</span>
-      </div>
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-      <input
-        type="search"
-        value={query}
-        onChange={(event) => onQueryChange(event.target.value)}
-        placeholder="Rechercher…"
-        className="w-full rounded-md border border-line bg-surface-2 px-3 py-1.5 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
+  const toggle = (key: string) =>
+    setExpanded((current) => {
+      const next = new Set(current);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
+
+  const active = selectionKey(selection);
+  const byPlatform = (platform: Game["platform"]) =>
+    games.filter((game) => game.platform === platform);
+  const inCollection = (collection: Collection) =>
+    games.filter((game) => collection.gameIds.includes(game.id));
+
+  const gameRows = (list: Game[]) =>
+    list.map((game) => (
+      <GameRow
+        key={game.id}
+        game={game}
+        active={game.id === selectedGameId}
+        onSelect={() => onSelectGame(game)}
+        onContextMenu={(event) => onGameContextMenu(game, event)}
       />
+    ));
 
-      {/* Owned games outnumber installed ones several times over, so this
-          decides what the grid is about before any platform filter applies. */}
-      <div className="flex rounded-md border border-line bg-surface-2 p-0.5">
-        {INSTALL_FILTERS.map((filter) => (
-          <button
-            key={filter}
-            type="button"
-            onClick={() => onInstallFilterChange(filter)}
-            title={`${INSTALL_FILTER_LABELS[filter]} — ${installCounts[filter]} jeux`}
-            className={`flex-1 rounded px-1 py-1 text-[11px] font-medium transition ${
-              installFilter === filter
-                ? "bg-surface-3 text-ink"
-                : "text-ink-muted hover:text-ink"
-            }`}
-          >
-            {INSTALL_FILTER_LABELS[filter]}
-          </button>
-        ))}
+  return (
+    <aside className="flex w-64 shrink-0 flex-col border-r border-line bg-surface-1">
+      <div className="flex flex-col gap-3 p-4 pb-2">
+        <div className="flex items-baseline gap-2">
+          <h1 className="font-display text-2xl leading-none font-semibold tracking-tight text-ink">
+            Gamlib
+          </h1>
+          <span className="text-[10px] text-ink-faint">v0.1</span>
+        </div>
+
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => onQueryChange(event.target.value)}
+          placeholder="Rechercher…"
+          className="w-full rounded-md border border-line bg-surface-2 px-3 py-1.5 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
+        />
+
+        {/* Owned games outnumber installed ones several times over, so this
+            decides what the whole sidebar is about. */}
+        <div className="flex rounded-md border border-line bg-surface-2 p-0.5">
+          {INSTALL_FILTERS.map((filter) => (
+            <button
+              key={filter}
+              type="button"
+              onClick={() => onInstallFilterChange(filter)}
+              title={`${INSTALL_FILTER_LABELS[filter]} — ${installCounts[filter]} jeux`}
+              className={`flex-1 rounded px-1 py-1 text-[11px] font-medium transition ${
+                installFilter === filter
+                  ? "bg-surface-3 text-ink"
+                  : "text-ink-muted hover:text-ink"
+              }`}
+            >
+              {INSTALL_FILTER_LABELS[filter]}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <nav className="flex flex-col gap-0.5">
-        <FilterRow
-          label="Toutes plateformes"
-          count={total}
-          active={platform === null}
-          onClick={() => onPlatformChange(null)}
+      <nav className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+        <GroupRow
+          label="Tous les jeux"
+          count={games.length}
+          active={active === "all"}
+          onSelect={() => onSelectionChange({ kind: "all" })}
         />
-        {PLATFORMS.map((entry) => (
-          <FilterRow
-            key={entry}
-            label={PLATFORM_LABELS[entry]}
-            count={counts[entry]}
-            active={platform === entry}
-            dot={entry}
-            onClick={() => onPlatformChange(entry)}
-          />
-        ))}
+
+        <SectionLabel
+          action={{
+            label: "＋",
+            title: "Nouvelle liste",
+            onClick: onNewCollection,
+          }}
+        >
+          Mes listes
+        </SectionLabel>
+
+        {collections.length === 0 ? (
+          <p className="px-2.5 pb-1 text-[11px] leading-snug text-ink-faint">
+            Aucune liste. Clic droit sur un jeu pour l'ajouter à une nouvelle
+            liste.
+          </p>
+        ) : (
+          collections.map((collection) => {
+            const key = `collection:${collection.id}`;
+            const members = inCollection(collection);
+            return (
+              <div key={collection.id}>
+                <GroupRow
+                  label={collection.name}
+                  count={members.length}
+                  active={active === key}
+                  expanded={expanded.has(key)}
+                  onToggle={() => toggle(key)}
+                  onSelect={() =>
+                    onSelectionChange({ kind: "collection", id: collection.id })
+                  }
+                  onContextMenu={(event) =>
+                    onCollectionContextMenu(collection, event)
+                  }
+                />
+                {expanded.has(key) && gameRows(members)}
+              </div>
+            );
+          })
+        )}
+
+        <SectionLabel>Plateformes</SectionLabel>
+
+        {PLATFORMS.map((platform) => {
+          const key = `platform:${platform}`;
+          const list = byPlatform(platform);
+          if (list.length === 0) return null;
+          return (
+            <div key={platform}>
+              <GroupRow
+                label={PLATFORM_LABELS[platform]}
+                count={list.length}
+                active={active === key}
+                expanded={expanded.has(key)}
+                onToggle={() => toggle(key)}
+                onSelect={() => onSelectionChange({ kind: "platform", platform })}
+                dot={platform}
+              />
+              {expanded.has(key) && gameRows(list)}
+            </div>
+          );
+        })}
       </nav>
 
-      <label className="flex flex-col gap-1.5">
-        <span className="text-[10px] tracking-widest text-ink-faint uppercase">
-          Trier par
-        </span>
-        <select
-          value={sort}
-          onChange={(event) => onSortChange(event.target.value as SortKey)}
-          className="rounded-md border border-line bg-surface-2 px-2 py-1.5 text-sm text-ink focus:border-accent focus:outline-none"
-        >
-          {Object.entries(SORT_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="flex flex-col gap-3 border-t border-line p-4">
+        <label className="flex items-center gap-2">
+          <span className="text-[10px] tracking-widest text-ink-faint uppercase">
+            Tri
+          </span>
+          <select
+            value={sort}
+            onChange={(event) => onSortChange(event.target.value as SortKey)}
+            className="flex-1 rounded-md border border-line bg-surface-2 px-2 py-1 text-xs text-ink focus:border-accent focus:outline-none"
+          >
+            {Object.entries(SORT_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
 
-      <div className="mt-auto flex flex-col gap-3">
         {errors.length > 0 && (
           <ul className="flex flex-col gap-1.5 rounded-md border border-line bg-surface-2 p-2.5">
             {errors.map((error) => (

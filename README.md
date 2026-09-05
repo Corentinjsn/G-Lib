@@ -38,6 +38,20 @@ La grille s'ouvre sur les jeux installés ; un sélecteur donne accès à
 « Tous » et « À installer ». Les jeux non installés sont grisés et portent un
 badge ↓.
 
+### Navigation et listes
+
+La barre latérale est une navigation à la Steam : « Tous les jeux », vos listes,
+puis un groupe par plateforme. Chaque groupe se déplie pour révéler ses jeux par
+nom ; cliquer sur l'un d'eux ouvre sa fiche sans changer le filtre.
+
+Les listes sont libres et un jeu peut appartenir à plusieurs d'entre elles. On
+les remplit au clic droit sur un jeu — les listes s'y affichent en cases à
+cocher — et on les renomme ou supprime au clic droit sur la liste elle-même.
+
+L'appartenance est stockée sur la liste (`collections.json`), pas sur le jeu :
+chaque analyse reconstruit la bibliothèque depuis les launchers, donc tout ce
+qui serait porté par un `Game` disparaîtrait avec elle.
+
 ### Jaquettes
 
 Trois sources, aucune ne demandant de clé d'API ni de compte :
@@ -83,16 +97,20 @@ cargo test -- --ignored --nocapture dump_real_library   # dump de la machine
 
 - `src-tauri/src/scanners/` — un module par plateforme, chacun renvoyant des
   `Game` normalisés ; `mod.rs` agrège et isole les pannes.
-- `src-tauri/src/vdf.rs` — parser du format KeyValues de Valve.
+- `src-tauri/src/vdf.rs` — KeyValues texte de Valve (`.vdf`, `.acf`).
+- `src-tauri/src/binvdf.rs` — KeyValues **binaire**, un format distinct, pour la
+  liste de licences Steam.
+- `src-tauri/src/steam_store.rs` — client des endpoints store publics.
 - `src-tauri/src/launcher.rs` — `ShellExecuteW` sur l'URI de la plateforme.
 - `src-tauri/src/artwork.rs` — jaquettes, cache disque, servies via le
   protocole `asset` de Tauri (la CSP reste fermée aux hôtes distants).
+- `src-tauri/src/collections.rs` — les listes de l'utilisateur.
 - `src/` — React + Tailwind. `types.ts` est le miroir de `models.rs`.
 
 ## Pas encore fait
 
 Jeux possédés côté EA et Ubisoft (aucune source locale — il faudrait
 s'authentifier) · choisir sa propre jaquette, et donc corriger une
-correspondance ratée sans vider le cache · suivi du temps de jeu · favoris et
-catégories · GOG, Battle.net, Xbox · import de jeux manuels · détection
-d'installation en temps réel.
+correspondance ratée sans vider le cache · suivi du temps de jeu ·
+GOG, Battle.net, Xbox · import de jeux manuels · détection d'installation en
+temps réel.
