@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  inScope,
   installCounts,
   paletteRank,
   searchPalette,
@@ -179,5 +180,41 @@ describe("searchPalette", () => {
   test("propose les plus récemment joués quand le champ est vide", () => {
     const older = game({ id: "steam:6", name: "Ancien", lastPlayed: 100 });
     expect(searchPalette([older, eldenRing], "")[0].name).toBe("Elden Ring");
+  });
+});
+
+describe("inScope", () => {
+  const view = (over = {}) => ({
+    installFilter: "all" as const,
+    selection: { kind: "all" } as const,
+    collections: [] as Collection[],
+    ...over,
+  });
+
+  test("un jeu d'une autre plateforme sort du périmètre", () => {
+    expect(inScope(eldenRing, view())).toBe(true);
+    expect(
+      inScope(eldenRing, view({ selection: { kind: "platform", platform: "epic" } })),
+    ).toBe(false);
+  });
+
+  test("le filtre d'installation compte, pas la recherche", () => {
+    expect(inScope(fragpunk, view({ installFilter: "installed" }))).toBe(false);
+    expect(inScope(fragpunk, view({ installFilter: "notInstalled" }))).toBe(true);
+  });
+
+  test("un jeu masqué n'est dans le périmètre que de la vue des masqués", () => {
+    expect(inScope(junk, view())).toBe(false);
+    expect(inScope(junk, view({ selection: { kind: "hidden" } }))).toBe(true);
+  });
+
+  test("l'appartenance à une liste est vérifiée", () => {
+    const list: Collection = { id: "c1", name: "Coop", gameIds: [hades.id] };
+    const scoped = view({
+      selection: { kind: "collection", id: "c1" },
+      collections: [list],
+    });
+    expect(inScope(hades, scoped)).toBe(true);
+    expect(inScope(eldenRing, scoped)).toBe(false);
   });
 });
