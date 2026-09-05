@@ -162,8 +162,10 @@ export function TitleBar({
         {/* La marque dessinee plutot que le PNG : a cette taille, un aplat de
             16 pixels devient une bouillie, alors que les traits du SVG
             tiennent. */}
-        <LogoMark className="h-[20px] w-auto" />
-        <span className="font-display text-[13px] leading-none font-semibold tracking-tight text-ink">
+        {/* Au meme ton que les boutons de la barre : rien ici n'est le sujet
+            de la fenetre, c'est une etiquette. */}
+        <LogoMark className="h-[20px] w-auto text-ink-muted" />
+        <span className="font-display text-[13px] leading-none font-semibold tracking-tight text-ink-muted">
           Gamlib
         </span>
         <span className="text-[10px] leading-none text-ink-faint">
