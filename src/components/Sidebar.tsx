@@ -31,10 +31,7 @@ interface Props {
   selectedGameId: string | null;
   onSelectGame: (game: Game) => void;
   onGameContextMenu: (game: Game, event: MouseEvent) => void;
-  onCollectionContextMenu: (
-    collection: Collection,
-    event: MouseEvent,
-  ) => void;
+  onCollectionContextMenu: (collection: Collection, event: MouseEvent) => void;
   onNewCollection: () => void;
   installFilter: InstallFilter;
   onInstallFilterChange: (filter: InstallFilter) => void;
@@ -52,11 +49,6 @@ interface Props {
   errors: ScanError[];
   /** Total hidden games, counted outside the current view. */
   hiddenCount: number;
-  /** Set only when a newer release is waiting. */
-  updateVersion: string | null;
-  updateDownloading: boolean;
-  updateProgress: number;
-  onInstallUpdate: () => void;
 }
 
 /**
@@ -215,10 +207,6 @@ export function Sidebar({
   syncedAt,
   errors,
   hiddenCount,
-  updateVersion,
-  updateDownloading,
-  updateProgress,
-  onInstallUpdate,
 }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   useMinuteTick();
@@ -250,36 +238,9 @@ export function Sidebar({
 
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-line bg-surface-1">
-      <div className="flex flex-col gap-3 p-4 pb-2">
-        <div className="flex items-baseline gap-2">
-          <h1 className="font-display text-2xl leading-none font-semibold tracking-tight text-ink">
-            Gamlib
-          </h1>
-          <span className="text-[10px] text-ink-faint">v{__APP_VERSION__}</span>
-          {/* Next to the version it is already about versions: no label needed
-              for the icon to be understood. */}
-          {updateVersion && (
-            <button
-              type="button"
-              onClick={onInstallUpdate}
-              disabled={updateDownloading}
-              aria-label={`Mettre à jour vers ${updateVersion}`}
-              title={
-                updateDownloading
-                  ? `Téléchargement… ${Math.round(updateProgress * 100)} %`
-                  : `Mettre à jour vers ${updateVersion}`
-              }
-              className="flex size-4 items-center justify-center self-center rounded-full bg-accent/20 text-[9px] leading-none text-accent transition hover:bg-accent/35 disabled:cursor-progress"
-            >
-              {updateDownloading ? (
-                <span className="size-1.5 animate-pulse rounded-full bg-accent" />
-              ) : (
-                "↓"
-              )}
-            </button>
-          )}
-        </div>
-
+      {/* Le nom et la mise a jour vivent desormais dans la barre de titre :
+          la barre laterale commence donc par ce qu'elle sert a faire. */}
+      <div className="flex flex-col gap-3 p-4 pt-3 pb-2">
         <div className="relative">
           <input
             id={SEARCH_INPUT_ID}
@@ -429,7 +390,9 @@ export function Sidebar({
                 active={active === key}
                 expanded={expanded.has(key)}
                 onToggle={() => toggle(key)}
-                onSelect={() => onSelectionChange({ kind: "platform", platform })}
+                onSelect={() =>
+                  onSelectionChange({ kind: "platform", platform })
+                }
                 icon={platform}
               />
               {expanded.has(key) && gameRows(list)}

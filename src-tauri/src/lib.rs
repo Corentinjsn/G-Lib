@@ -237,7 +237,19 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         // Reopening at the size and place it was left is the kind of thing a
         // daily-use application is expected to do.
-        .plugin(tauri_plugin_window_state::Builder::default().build())
+        //
+        // DECORATIONS is deliberately absent: it is part of the default set,
+        // and restoring it put the system title bar back over the one the
+        // application draws itself. What the window looks like is the
+        // application's decision, not a piece of session state.
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::all()
+                        - tauri_plugin_window_state::StateFlags::DECORATIONS,
+                )
+                .build(),
+        )
         .manage(Library::default())
         .setup(|app| {
             // Watching processes is how every platform gets a play history,

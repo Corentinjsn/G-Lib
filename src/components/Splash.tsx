@@ -40,7 +40,10 @@ export function Splash({
   update?: SplashUpdate;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-surface-0">
+    // Remplit ce qui reste sous la barre de titre plutot que la fenetre
+    // entiere : sans decoration systeme, recouvrir la barre priverait de tout
+    // moyen de deplacer ou fermer la fenetre pendant une mise a jour.
+    <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-8 bg-surface-0">
       <div className="flex flex-col items-center gap-2">
         <div className="relative flex size-20 items-center justify-center">
           {update && (

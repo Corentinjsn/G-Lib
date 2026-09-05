@@ -14,6 +14,7 @@ import { NameDialog } from "./components/NameDialog";
 import { Palette, type PaletteAction } from "./components/Palette";
 import { Sidebar } from "./components/Sidebar";
 import { Splash, type SplashStep } from "./components/Splash";
+import { TitleBar } from "./components/TitleBar";
 import { useCollections } from "./hooks/useCollections";
 import { useGridKeys } from "./hooks/useGridKeys";
 import { useLibrary } from "./hooks/useLibrary";
@@ -66,7 +67,8 @@ export default function App() {
 
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortKey>("name");
-  const [installFilter, setInstallFilter] = useState<InstallFilter>("installed");
+  const [installFilter, setInstallFilter] =
+    useState<InstallFilter>("installed");
   const [selection, setSelection] = useState<Selection>({ kind: "all" });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
@@ -340,7 +342,10 @@ export default function App() {
           action: () => {
             setMenu(null);
             // Dropping a list never touches the games in it.
-            if (selection.kind === "collection" && selection.id === collection.id) {
+            if (
+              selection.kind === "collection" &&
+              selection.id === collection.id
+            ) {
               setSelection({ kind: "all" });
             }
             void collections.remove(collection.id);
@@ -400,112 +405,126 @@ export default function App() {
     enabled: menu === null && dialog === null && !paletteOpen,
   });
 
+  // La barre de titre est rendue avant tout le reste, y compris pendant le
+  // splash : la fenetre n'a plus de decoration systeme, donc c'est le seul
+  // endroit d'ou on peut la deplacer ou la fermer.
+  const titleBar = (
+    <TitleBar
+      // Reste affichée pendant le téléchargement, qui porte sa progression.
+      updateVersion={
+        update.phase === "available" || update.phase === "downloading"
+          ? update.version
+          : null
+      }
+      updateDownloading={update.phase === "downloading"}
+      updateProgress={update.progress}
+      onInstallUpdate={() => void update.install()}
+    />
+  );
+
   if (!ready) {
     return (
-      <Splash
-        steps={splashSteps}
-        update={
-          updating
-            ? { version: update.version, progress: update.progress }
-            : undefined
-        }
-      />
+      <div className="flex h-full flex-col">
+        {titleBar}
+        <Splash
+          steps={splashSteps}
+          update={
+            updating
+              ? { version: update.version, progress: update.progress }
+              : undefined
+          }
+        />
+      </div>
     );
   }
 
   return (
-    <div className="flex h-full">
-      <Sidebar
-        games={scoped}
-        unscopedGames={unhidden}
-        collections={collections.collections}
-        selection={selection}
-        onSelectionChange={setSelection}
-        selectedGameId={selectedId}
-        onSelectGame={(game) => setSelectedId(game.id)}
-        onGameContextMenu={openGameMenu}
-        onCollectionContextMenu={openCollectionMenu}
-        onNewCollection={() => setDialog({ mode: "create" })}
-        installFilter={installFilter}
-        onInstallFilterChange={setInstallFilter}
-        installCounts={counts}
-        enterTarget={visible[0]?.name ?? null}
-        query={query}
-        onQueryChange={setQuery}
-        sort={sort}
-        onSortChange={setSort}
-        syncing={status !== "idle"}
-        onSync={() => {
-          void refresh();
-          void update.checkNow();
-        }}
-        syncedAt={result?.scannedAt ?? null}
-        errors={result?.errors ?? []}
-        hiddenCount={hiddenCount}
-        // Reste affichée pendant le téléchargement, qui porte sa progression.
-        updateVersion={
-          update.phase === "available" || update.phase === "downloading"
-            ? update.version
-            : null
-        }
-        updateDownloading={update.phase === "downloading"}
-        updateProgress={update.progress}
-        onInstallUpdate={() => void update.install()}
-      />
-
-      <main className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-line px-6 py-3">
-          <span className="text-sm text-ink-muted">
-            {visible.length} {visible.length > 1 ? "jeux" : "jeu"}
-            <span className="text-ink-faint"> · {scopeLabel}</span>
-          </span>
-          {status !== "idle" ? (
-            <span className="text-xs text-ink-faint">
-              {status === "scanning"
-                ? "Lecture des launchers…"
-                : "Catalogue en ligne…"}
-            </span>
-          ) : (
-            // Sits where the sync status goes, so the header never carries two
-            // competing messages. Dropped on narrow windows.
-            <span className="hidden items-center gap-4 text-[11px] lg:flex">
-              <KbdHint keys={["←", "↑", "↓", "→"]} label="naviguer" />
-              <KbdHint keys={["↵"]} label="lancer" />
-              {/* Une palette qu'on ne sait pas ouvrir n'existe pas. */}
-              <KbdHint keys={["Ctrl", "K"]} label="rechercher" />
-            </span>
-          )}
-        </header>
-
-        <div ref={gridScroll} className="min-h-0 flex-1 overflow-y-auto">
-          {visible.length > 0 ? (
-            <GameGrid
-              games={visible}
-              selectedId={selectedId}
-              onSelect={(game) => setSelectedId(game.id)}
-              onLaunch={handleLaunch}
-              onContextMenu={openGameMenu}
-              onToggleFavorite={(game) =>
-                void toggleFlag(game, "favorite", !game.favorite)
-              }
-            />
-          ) : (
-            <EmptyState scanning={status !== "idle"} />
-          )}
-        </div>
-      </main>
-
-      {selected && (
-        <GameDetail
-          game={selected}
-          onClose={() => setSelectedId(null)}
-          onLaunch={() => handleLaunch(selected)}
-          onOpenFolder={() => handleOpenFolder(selected)}
-          onToggleFavorite={() =>
-            void toggleFlag(selected, "favorite", !selected.favorite)
-          }
+    <div className="flex h-full flex-col">
+      {titleBar}
+      <div className="flex min-h-0 flex-1">
+        <Sidebar
+          games={scoped}
+          unscopedGames={unhidden}
+          collections={collections.collections}
+          selection={selection}
+          onSelectionChange={setSelection}
+          selectedGameId={selectedId}
+          onSelectGame={(game) => setSelectedId(game.id)}
+          onGameContextMenu={openGameMenu}
+          onCollectionContextMenu={openCollectionMenu}
+          onNewCollection={() => setDialog({ mode: "create" })}
+          installFilter={installFilter}
+          onInstallFilterChange={setInstallFilter}
+          installCounts={counts}
+          enterTarget={visible[0]?.name ?? null}
+          query={query}
+          onQueryChange={setQuery}
+          sort={sort}
+          onSortChange={setSort}
+          syncing={status !== "idle"}
+          onSync={() => {
+            void refresh();
+            void update.checkNow();
+          }}
+          syncedAt={result?.scannedAt ?? null}
+          errors={result?.errors ?? []}
+          hiddenCount={hiddenCount}
         />
-      )}
+
+        <main className="flex min-w-0 flex-1 flex-col">
+          <header className="flex items-center justify-between border-b border-line px-6 py-3">
+            <span className="text-sm text-ink-muted">
+              {visible.length} {visible.length > 1 ? "jeux" : "jeu"}
+              <span className="text-ink-faint"> · {scopeLabel}</span>
+            </span>
+            {status !== "idle" ? (
+              <span className="text-xs text-ink-faint">
+                {status === "scanning"
+                  ? "Lecture des launchers…"
+                  : "Catalogue en ligne…"}
+              </span>
+            ) : (
+              // Sits where the sync status goes, so the header never carries two
+              // competing messages. Dropped on narrow windows.
+              <span className="hidden items-center gap-4 text-[11px] lg:flex">
+                <KbdHint keys={["←", "↑", "↓", "→"]} label="naviguer" />
+                <KbdHint keys={["↵"]} label="lancer" />
+                {/* Une palette qu'on ne sait pas ouvrir n'existe pas. */}
+                <KbdHint keys={["Ctrl", "K"]} label="rechercher" />
+              </span>
+            )}
+          </header>
+
+          <div ref={gridScroll} className="min-h-0 flex-1 overflow-y-auto">
+            {visible.length > 0 ? (
+              <GameGrid
+                games={visible}
+                selectedId={selectedId}
+                onSelect={(game) => setSelectedId(game.id)}
+                onLaunch={handleLaunch}
+                onContextMenu={openGameMenu}
+                onToggleFavorite={(game) =>
+                  void toggleFlag(game, "favorite", !game.favorite)
+                }
+              />
+            ) : (
+              <EmptyState scanning={status !== "idle"} />
+            )}
+          </div>
+        </main>
+
+        {selected && (
+          <GameDetail
+            game={selected}
+            onClose={() => setSelectedId(null)}
+            onLaunch={() => handleLaunch(selected)}
+            onOpenFolder={() => handleOpenFolder(selected)}
+            onToggleFavorite={() =>
+              void toggleFlag(selected, "favorite", !selected.favorite)
+            }
+          />
+        )}
+      </div>
 
       {/* Cherche dans toute la bibliothèque, filtres de la barre latérale
           compris : c'est le chemin vers un jeu qu'on ne voit pas. */}
