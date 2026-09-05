@@ -397,25 +397,28 @@ export function Sidebar({
       </nav>
 
       <div className="flex flex-col gap-3 border-t border-line p-4">
+        {/* Discreet on purpose: a release found mid-session interrupts nothing,
+            so it announces itself in a pill rather than a banner. */}
         {updateVersion && (
           <button
             type="button"
             onClick={onInstallUpdate}
             disabled={updateDownloading}
             title={`Installe la version ${updateVersion} et relance l'application.`}
-            className="relative w-full overflow-hidden rounded-md bg-accent py-2 text-sm font-semibold text-surface-0 transition hover:brightness-110 disabled:cursor-progress"
+            className="relative mx-auto flex items-center gap-1.5 overflow-hidden rounded-full bg-accent/15 px-2.5 py-1 text-[11px] font-medium text-accent transition hover:bg-accent/25 disabled:cursor-progress"
           >
             {updateDownloading && (
               <span
                 aria-hidden
-                className="absolute inset-y-0 left-0 bg-black/20 transition-[width] duration-200"
+                className="absolute inset-y-0 left-0 bg-accent/25 transition-[width] duration-200"
                 style={{ width: `${Math.round(updateProgress * 100)}%` }}
               />
             )}
+            <span className="relative leading-none">↓</span>
             <span className="relative">
               {updateDownloading
-                ? `Téléchargement… ${Math.round(updateProgress * 100)} %`
-                : `Mettre à jour vers ${updateVersion}`}
+                ? `${Math.round(updateProgress * 100)} %`
+                : `Mise à jour ${updateVersion}`}
             </span>
           </button>
         )}

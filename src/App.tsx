@@ -339,7 +339,12 @@ export default function App() {
         syncedAt={result?.scannedAt ?? null}
         errors={result?.errors ?? []}
         hiddenCount={hiddenCount}
-        updateVersion={update.phase === "none" ? null : update.version}
+        // Reste affichée pendant le téléchargement, qui porte sa progression.
+        updateVersion={
+          update.phase === "available" || update.phase === "downloading"
+            ? update.version
+            : null
+        }
         updateDownloading={update.phase === "downloading"}
         updateProgress={update.progress}
         onInstallUpdate={() => void update.install()}
