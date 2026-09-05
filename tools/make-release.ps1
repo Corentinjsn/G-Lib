@@ -9,7 +9,14 @@
 
 param(
   [string]$KeyPath = "$env:USERPROFILE\.gamlib\updater.key",
-  [string]$KeyPassword = "",
+  # Fichier contenant le mot de passe de la cle.
+  #
+  # Tauri invite a le saisir quand la variable d'environnement est absente, et
+  # PowerShell ne transmet pas une variable vide a un processus enfant : un
+  # build sans mot de passe reste donc bloque sur une invite que personne ne
+  # voit. Le mot de passe ne protege que la cle au repos — c'est le fichier de
+  # cle lui-meme qui est le secret.
+  [string]$KeyPasswordFile = "$env:USERPROFILE\.gamlib\updater.pass",
   [string]$Notes = ""
 )
 
@@ -24,17 +31,24 @@ if (-not (Test-Path $KeyPath)) {
 $version = (Get-Content "package.json" -Raw | ConvertFrom-Json).version
 Write-Output "Version : $version"
 
-$env:TAURI_SIGNING_PRIVATE_KEY = Get-Content $KeyPath -Raw
-$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = $KeyPassword
+if (-not (Test-Path $KeyPasswordFile)) {
+  throw "Mot de passe de la cle introuvable : $KeyPasswordFile"
+}
+
+$env:TAURI_SIGNING_PRIVATE_KEY = (Get-Content $KeyPath -Raw).Trim()
+$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = (Get-Content $KeyPasswordFile -Raw).Trim()
 
 bun run tauri build
 if ($LASTEXITCODE -ne 0) { throw "le build a echoue" }
 
 $nsis = Join-Path $root "src-tauri\target\release\bundle\nsis"
-$installer = Get-ChildItem $nsis -Filter "*-setup.exe" | Select-Object -First 1
-$signature = Get-ChildItem $nsis -Filter "*-setup.exe.sig" | Select-Object -First 1
 
-if (-not $installer) { throw "installeur introuvable dans $nsis" }
+# Filtre sur la version : les builds precedents restent dans le dossier, et le
+# premier par ordre alphabetique est le plus ancien, pas le bon.
+$installer = Get-ChildItem $nsis -Filter "*_${version}_*-setup.exe" | Select-Object -First 1
+$signature = Get-ChildItem $nsis -Filter "*_${version}_*-setup.exe.sig" | Select-Object -First 1
+
+if (-not $installer) { throw "installeur $version introuvable dans $nsis" }
 if (-not $signature) {
   throw "signature introuvable : verifier createUpdaterArtifacts dans tauri.conf.json"
 }
@@ -56,7 +70,13 @@ $latest = [ordered]@{
 }
 
 $latestPath = Join-Path $nsis "latest.json"
-$latest | ConvertTo-Json -Depth 5 | Set-Content $latestPath -Encoding utf8
+# Sans BOM : Set-Content -Encoding utf8 en ajoute un sous PowerShell 5.1, et un
+# BOM en tete peut faire echouer l'analyse du JSON cote updater.
+[System.IO.File]::WriteAllText(
+  $latestPath,
+  ($latest | ConvertTo-Json -Depth 5),
+  (New-Object System.Text.UTF8Encoding $false)
+)
 
 Write-Output ""
 Write-Output "Prets a publier :"
