@@ -52,6 +52,11 @@ pub struct Game {
     /// Where the cover can be downloaded, best first, when the scanner already
     /// knows. Saves the artwork pass a lookup it would otherwise repeat.
     pub cover_urls: Vec<String>,
+    /// Marked by the user. Set from `flags.json` after every scan, never by a
+    /// scanner.
+    pub favorite: bool,
+    /// Hidden games stay out of every view but the one that lists them.
+    pub hidden: bool,
     /// Hands the game to its launcher: to play it, or to install it.
     pub action_uri: String,
 }
@@ -74,6 +79,8 @@ impl Game {
             size_on_disk: None,
             last_played: None,
             playtime_seconds: None,
+            favorite: false,
+            hidden: false,
             cover_path: None,
             cover_urls: Vec::new(),
             action_uri: action_uri.into(),

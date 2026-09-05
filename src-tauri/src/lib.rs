@@ -2,6 +2,7 @@ mod artwork;
 mod binvdf;
 mod cache;
 mod collections;
+mod flags;
 mod launcher;
 mod models;
 mod playtime;
@@ -60,6 +61,7 @@ async fn scan_library(app: AppHandle, library: State<'_, Library>) -> Result<Sca
     let result = tauri::async_runtime::spawn_blocking(move || {
         let mut result = scanners::scan_all();
         playtime::apply(&mut result.games, &playtime::load(&dir));
+        flags::apply(&mut result.games, &flags::load(&dir));
         artwork::attach_cached(&mut result.games, &cache::covers_dir(&dir));
         let _ = cache::save(&dir, &result);
         result
@@ -94,6 +96,7 @@ async fn fetch_catalog(app: AppHandle, library: State<'_, Library>) -> Result<Sc
         let _ = cache::save_store(&dir, &store);
         scanners::merge_owned(&mut result.games, owned);
         playtime::apply(&mut result.games, &playtime::load(&dir));
+        flags::apply(&mut result.games, &flags::load(&dir));
         scanners::sort_library(&mut result.games);
 
         artwork::fetch_missing(&mut result.games, &cache::covers_dir(&dir));
@@ -120,6 +123,32 @@ fn refresh_playtime(app: AppHandle, library: State<'_, Library>) -> Result<ScanR
         .lock()
         .map_err(|_| "bibliotheque verrouillee".to_string())?;
     playtime::apply(&mut current.games, &sessions);
+    Ok(current.clone())
+}
+
+#[tauri::command]
+fn list_flags(app: AppHandle) -> Result<flags::FlagMap, String> {
+    Ok(flags::load(&data_dir(&app)?))
+}
+
+/// Marks are applied to the library in memory as well as saved, so the grid
+/// reflects the change without waiting for the next sync.
+#[tauri::command]
+fn set_game_flag(
+    app: AppHandle,
+    library: State<'_, Library>,
+    game_id: String,
+    name: String,
+    value: bool,
+) -> Result<ScanResult, String> {
+    let dir = data_dir(&app)?;
+    let updated = flags::set(&dir, &game_id, &name, value).map_err(|e| format!("{e:#}"))?;
+
+    let mut current = library
+        .0
+        .lock()
+        .map_err(|_| "bibliotheque verrouillee".to_string())?;
+    flags::apply(&mut current.games, &updated);
     Ok(current.clone())
 }
 
@@ -184,6 +213,9 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        // Reopening at the size and place it was left is the kind of thing a
+        // daily-use application is expected to do.
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .manage(Library::default())
         .setup(|app| {
             // Watching processes is how every platform gets a play history,
@@ -208,6 +240,8 @@ pub fn run() {
             launch_game,
             open_install_dir,
             refresh_playtime,
+            list_flags,
+            set_game_flag,
             list_collections,
             create_collection,
             rename_collection,

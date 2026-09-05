@@ -14,6 +14,10 @@ export interface Game {
   lastPlayed: number | null;
   /** Seconds played, as measured by GAMLIB itself. */
   playtimeSeconds: number | null;
+  /** Marked by the user, not by any scanner. */
+  favorite: boolean;
+  /** Kept out of every view but the one that lists hidden games. */
+  hidden: boolean;
   coverPath: string | null;
   coverUrls: string[];
   /** Launches the game, or installs it. The backend decides which. */
@@ -35,6 +39,8 @@ export interface Collection {
 /** What the grid is currently showing. */
 export type Selection =
   | { kind: "all" }
+  | { kind: "favorites" }
+  | { kind: "hidden" }
   | { kind: "platform"; platform: Platform }
   | { kind: "collection"; id: string };
 
@@ -48,7 +54,7 @@ export function selectionKey(selection: Selection): string {
     case "collection":
       return `collection:${selection.id}`;
     default:
-      return "all";
+      return selection.kind;
   }
 }
 
