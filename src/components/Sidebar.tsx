@@ -42,6 +42,11 @@ interface Props {
   /** Unix epoch seconds of the last completed sync, if any. */
   syncedAt: number | null;
   errors: ScanError[];
+  /** Set only when a newer release is waiting. */
+  updateVersion: string | null;
+  updateDownloading: boolean;
+  updateProgress: number;
+  onInstallUpdate: () => void;
 }
 
 /**
@@ -189,6 +194,10 @@ export function Sidebar({
   onSync,
   syncedAt,
   errors,
+  updateVersion,
+  updateDownloading,
+  updateProgress,
+  onInstallUpdate,
 }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   useMinuteTick();
@@ -329,6 +338,29 @@ export function Sidebar({
       </nav>
 
       <div className="flex flex-col gap-3 border-t border-line p-4">
+        {updateVersion && (
+          <button
+            type="button"
+            onClick={onInstallUpdate}
+            disabled={updateDownloading}
+            title={`Installe la version ${updateVersion} et relance l'application.`}
+            className="relative w-full overflow-hidden rounded-md bg-accent py-2 text-sm font-semibold text-surface-0 transition hover:brightness-110 disabled:cursor-progress"
+          >
+            {updateDownloading && (
+              <span
+                aria-hidden
+                className="absolute inset-y-0 left-0 bg-black/20 transition-[width] duration-200"
+                style={{ width: `${Math.round(updateProgress * 100)}%` }}
+              />
+            )}
+            <span className="relative">
+              {updateDownloading
+                ? `Téléchargement… ${Math.round(updateProgress * 100)} %`
+                : `Mettre à jour vers ${updateVersion}`}
+            </span>
+          </button>
+        )}
+
         <label className="flex items-center gap-2">
           <span className="text-[10px] tracking-widest text-ink-faint uppercase">
             Tri

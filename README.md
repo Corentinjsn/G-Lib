@@ -93,6 +93,28 @@ cargo test
 cargo test -- --ignored --nocapture dump_real_library   # dump de la machine
 ```
 
+## Mises à jour
+
+L'application cherche une version plus récente au démarrage, pendant l'écran de
+chargement. S'il y en a une, un bouton apparaît en bas de la barre latérale :
+il télécharge, installe et relance.
+
+Tauri refuse d'installer une mise à jour non signée. La paire de clés vit **hors
+du dépôt**, par défaut `%USERPROFILE%\.gamlib\updater.key` — la perdre revient à
+ne plus pouvoir publier de mise à jour pour les installations existantes.
+
+Publier une version :
+
+```powershell
+# bumper la version dans package.json, Cargo.toml et tauri.conf.json d'abord
+powershell -ExecutionPolicy Bypass -File tools/make-release.ps1
+```
+
+Le script construit, signe, et assemble le `latest.json` attendu par l'updater,
+puis affiche la commande `gh release create` à lancer. `latest.json` doit être
+un asset de la release **la plus récente** : l'updater le lit via
+`/releases/latest/download/latest.json`.
+
 ## Architecture
 
 - `src-tauri/src/scanners/` — un module par plateforme, chacun renvoyant des
