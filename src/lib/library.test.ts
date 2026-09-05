@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { installCounts, selectGames, universe } from "./library";
+import {
+  installCounts,
+  paletteRank,
+  searchPalette,
+  selectGames,
+  universe,
+} from "./library";
 import type { Collection, Game } from "../types";
 
 function game(overrides: Partial<Game> & { id: string; name: string }): Game {
@@ -133,5 +139,45 @@ describe("installCounts", () => {
       all: 3,
       notInstalled: 1,
     });
+  });
+});
+
+describe("paletteRank", () => {
+  test("classe un début de titre devant un début de mot devant le reste", () => {
+    expect(paletteRank("Elden Ring", "eld")).toBe(0);
+    expect(paletteRank("Elden Ring", "ring")).toBe(1);
+    expect(paletteRank("Elden Ring", "ing")).toBe(2);
+  });
+
+  test("ignore casse et accents", () => {
+    expect(paletteRank("Pokémon Écarlate", "pokemon e")).toBe(0);
+  });
+
+  test("rend null quand rien ne correspond", () => {
+    expect(paletteRank("Hades", "zzz")).toBeNull();
+  });
+});
+
+describe("searchPalette", () => {
+  test("ignore la sélection de la barre latérale mais pas les jeux masqués", () => {
+    const names = searchPalette(games, "").map((entry) => entry.name);
+    expect(names).toContain("FragPunk");
+    expect(names).not.toContain("Vieux Truc");
+  });
+
+  test("place les jeux installés avant les autres", () => {
+    const owned = game({
+      id: "steam:5",
+      name: "Ame",
+      installed: false,
+    });
+    // "Ame" gagnerait sur le nom comme sur le rang ; l'installation prime.
+    const ranked = searchPalette([owned, hades], "a");
+    expect(ranked.map((entry) => entry.name)).toEqual(["Hades", "Ame"]);
+  });
+
+  test("propose les plus récemment joués quand le champ est vide", () => {
+    const older = game({ id: "steam:6", name: "Ancien", lastPlayed: 100 });
+    expect(searchPalette([older, eldenRing], "")[0].name).toBe("Elden Ring");
   });
 });

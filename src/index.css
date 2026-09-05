@@ -155,13 +155,29 @@
   animation: gamlib-halo 2.4s ease-in-out infinite;
 }
 
+/* The palette, arriving.
+   It drops in from just above its resting place rather than appearing outright,
+   which is what tells you it is a layer over the application and not a new
+   screen. Short enough that it never delays the first keystroke. */
+@keyframes gamlib-palette-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.985);
+  }
+}
+
+.palette-in {
+  animation: gamlib-palette-in 120ms ease-out;
+}
+
 /* Motion is decoration here; anyone who asked for less gets a still logo. */
 @media (prefers-reduced-motion: reduce) {
   .logo-card-left,
   .logo-card-right,
   .logo-card-front,
   .logo-breathe,
-  .logo-halo {
+  .logo-halo,
+  .palette-in {
     animation: none;
   }
 }
