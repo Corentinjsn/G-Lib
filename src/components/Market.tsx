@@ -11,6 +11,7 @@ import {
   type StoreOffer,
 } from "../types";
 import { PlatformIcon } from "./PlatformIcon";
+import { RemoteArt, Skeleton } from "./Skeleton";
 
 interface Props {
   /** Toute la bibliotheque, pour reconnaitre ce qui est deja possede. */
@@ -85,6 +86,19 @@ function Price({ item, large = false }: { item: MarketItem; large?: boolean }) {
   return <PriceTag price={item.price} large={large} />;
 }
 
+/** Une carte de resultat, avant que la recherche n'ait repondu. */
+function CardSkeleton() {
+  return (
+    <div className="flex flex-col overflow-hidden rounded-lg bg-surface-2">
+      <Skeleton className="aspect-[2/3] w-full rounded-none" />
+      <span className="flex min-h-[52px] flex-col gap-2 p-2">
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="h-3 w-12" />
+      </span>
+    </div>
+  );
+}
+
 function Card({
   item,
   owned,
@@ -96,9 +110,6 @@ function Card({
   selected: boolean;
   onSelect: () => void;
 }) {
-  const [broken, setBroken] = useState(false);
-  const art = broken ? null : item.coverUrl;
-
   return (
     <button
       type="button"
@@ -109,14 +120,19 @@ function Card({
       }`}
     >
       <span className="relative block aspect-[2/3] w-full overflow-hidden bg-surface-3">
-        {art ? (
-          <img
-            src={art}
-            alt=""
-            loading="lazy"
-            draggable={false}
-            onError={() => setBroken(true)}
-            className="h-full w-full object-cover"
+        {item.coverUrl ? (
+          <RemoteArt
+            // La cle remonte un composant neuf a chaque jeu : sans elle, la
+            // jaquette precedente resterait sous un nouveau nom le temps que
+            // la sienne arrive.
+            key={item.coverUrl}
+            src={item.coverUrl}
+            className="absolute inset-0 h-full w-full"
+            fallback={
+              <span className="flex h-full w-full items-center justify-center p-3 text-center text-sm font-semibold text-ink-muted">
+                {item.name}
+              </span>
+            }
           />
         ) : (
           <span className="flex h-full w-full items-center justify-center p-3 text-center text-sm font-semibold text-ink-muted">
@@ -192,9 +208,7 @@ function StoreButton({
       {price ? (
         <PriceTag price={price} />
       ) : loading ? (
-        <span className="shrink-0 animate-pulse text-[10px] text-ink-faint">
-          …
-        </span>
+        <Skeleton className="h-3.5 w-14 shrink-0" />
       ) : (
         <span className="shrink-0 text-[10px] text-ink-faint">
           {exact ? "fiche" : (link.note ?? "recherche")}
@@ -262,12 +276,14 @@ function Detail({
       </div>
 
       <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
+        {/* Le rapport de forme est celui de la banniere Steam : impose ici,
+            il empeche la fiche de se reorganiser quand l'image arrive. */}
         {item.headerUrl && (
-          <img
+          <RemoteArt
+            key={item.headerUrl}
             src={item.headerUrl}
-            alt=""
-            draggable={false}
-            className="w-full rounded-lg object-cover"
+            ratio="460 / 215"
+            className="w-full rounded-lg"
           />
         )}
 
@@ -301,13 +317,11 @@ function Detail({
         {item.screenshots.length > 0 && (
           <div className="grid grid-cols-2 gap-1.5">
             {item.screenshots.map((shot) => (
-              <img
+              <RemoteArt
                 key={shot}
                 src={shot}
-                alt=""
-                loading="lazy"
-                draggable={false}
-                className="w-full rounded object-cover"
+                ratio="16 / 9"
+                className="w-full rounded"
               />
             ))}
           </div>
@@ -451,7 +465,16 @@ export function Market({ library, onError }: Props) {
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {results.length > 0 ? (
+          {/* Une premiere recherche montre des cartes en attente ; une
+              recherche qui en suit une autre garde les resultats a l'ecran,
+              sans quoi la grille clignoterait a chaque frappe. */}
+          {results.length === 0 && loading ? (
+            <div className="grid grid-cols-[repeat(auto-fill,170px)] justify-start gap-3 p-4">
+              {Array.from({ length: 10 }, (_, index) => (
+                <CardSkeleton key={index} />
+              ))}
+            </div>
+          ) : results.length > 0 ? (
             // Largeur fixe, comme la grille de la bibliotheque : ouvrir une
             // fiche ne doit pas redimensionner ce qu'on regarde.
             <div className="grid grid-cols-[repeat(auto-fill,170px)] justify-start gap-3 p-4">
@@ -467,14 +490,14 @@ export function Market({ library, onError }: Props) {
             </div>
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-2 px-8 text-center">
+              {/* La recherche en cours a ses cartes en attente ; ce qui reste
+                  ici, c'est le depart et le vide. */}
               <p className="text-sm text-ink-muted">
-                {loading
-                  ? "Recherche…"
-                  : searched
-                    ? "Aucun jeu ne correspond."
-                    : "Cherchez un jeu par son titre."}
+                {searched
+                  ? "Aucun jeu ne correspond."
+                  : "Cherchez un jeu par son titre."}
               </p>
-              {!searched && !loading && (
+              {!searched && (
                 <p className="max-w-sm text-xs text-ink-faint">
                   Le catalogue et les prix viennent de Steam. Les liens d'achat
                   mènent aussi à Epic, EA, Ubisoft et Instant Gaming.
