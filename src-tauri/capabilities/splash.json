@@ -1,0 +1,14 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "splash",
+  "description": "Capability for the startup window: it listens, it can be dragged, and it can give up on starting.",
+  "windows": [
+    "splash"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:allow-close",
+    "core:window:allow-start-dragging",
+    "process:allow-exit"
+  ]
+}
