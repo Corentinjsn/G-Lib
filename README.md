@@ -97,11 +97,33 @@ Ni compte ni clé d'API.
 Les jeux déjà présents dans votre bibliothèque sont marqués comme tels, quelle
 que soit la plateforme qui les a fournis.
 
-Steam est la seule des quatre boutiques à publier tout cela : les autres n'ont
-pas de catalogue interrogeable sans contrat. Aucun prix n'est donc inventé
-pour elles — chaque fiche porte cinq boutons qui ouvrent Steam sur la fiche du
-jeu, et Epic, EA, Ubisoft et Instant Gaming sur leur propre recherche, titre
-déjà saisi. La liste des hôtes autorisés vit dans le backend
+#### Le prix ailleurs
+
+Ouvrir une fiche interroge trois autres boutiques, en parallèle :
+
+| Boutique | Source | Forme |
+|---|---|---|
+| Epic | GraphQL public, en GET | JSON, prix déjà formatés |
+| Instant Gaming | `window.searchResults` dans la page de recherche | JSON d'Algolia, prix public et remise |
+| Ubisoft | recherche rendue côté serveur | HTML |
+
+**EA n'a pas de source** : sa boutique est une application qui parle à une API
+fermée. Sa ligne reste un lien de recherche, et la fiche le dit plutôt que de
+laisser croire à un chargement qui n'aboutit pas.
+
+Le titre doit correspondre **exactement**, une fois réduit à ses lettres et ses
+chiffres — sans quoi *Hollow Knight: Silksong* passerait pour *Hollow Knight*,
+et afficher le prix d'un autre jeu est pire que de n'en afficher aucun. Chez
+Ubisoft, où le titre de la carte est celui du jeu quoi qu'elle vende, c'est le
+sous-titre qui tranche : le « Pack Scorpion du désert » s'appelle *Assassin's
+Creed Mirage* comme le jeu et coûte 14,99 €. Seules les cartes qui annoncent
+l'édition standard, ou qui n'annoncent rien, portent le prix du jeu.
+
+Deux de ces trois sources lisent du HTML, ce qui est fragile par nature :
+chacune échoue pour son propre compte, et la ligne redevient un simple lien de
+recherche.
+
+La liste des hôtes autorisés vit dans le backend
 (`launcher::open_store_url`) : une commande qui ouvrirait l'adresse qu'on lui
 tend serait une passerelle vers le shell.
 
