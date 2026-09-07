@@ -103,6 +103,7 @@ export function Palette({ games, actionsFor, onLaunch, onClose }: Props) {
   const [actionQuery, setActionQuery] = useState("");
   const [actionActive, setActionActive] = useState(0);
   const listRef = useRef<HTMLUListElement>(null);
+  const fieldRef = useRef<HTMLInputElement>(null);
 
   const results = useMemo(() => searchPalette(games, query), [games, query]);
 
@@ -151,7 +152,32 @@ export function Palette({ games, actionsFor, onLaunch, onClose }: Props) {
   const leaveActions = () => {
     setTargetId(null);
     setActionQuery("");
+    // Le retour se fait aussi a la souris, par le bouton qui nomme le jeu :
+    // sans cela le champ reste vide de focus et la frappe suivante se perd.
+    fieldRef.current?.focus();
   };
+
+  // Echap est pris sur la fenetre plutot que sur le dialogue : il doit fermer
+  // la palette meme quand le focus a quitte le champ. Le raccourci global de
+  // la grille ne peut pas repondre a sa place, il se tait tant que la palette
+  // est ouverte.
+  useEffect(() => {
+    const onEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      // On remonte d'un niveau a la fois : l'aller etait en deux temps, le
+      // retour ne doit pas jeter la recherche d'un coup.
+      if (targetId) {
+        setTargetId(null);
+        setActionQuery("");
+        fieldRef.current?.focus();
+      } else {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", onEscape);
+    return () => window.removeEventListener("keydown", onEscape);
+  }, [targetId, onClose]);
 
   const runAction = (action: PaletteAction) => {
     action.run();
@@ -182,13 +208,6 @@ export function Palette({ games, actionsFor, onLaunch, onClose }: Props) {
     }
 
     if (target) {
-      // Escape backs out one level at a time: the way in was two steps, so the
-      // way out should not throw the search away in one.
-      if (event.key === "Escape") {
-        event.preventDefault();
-        leaveActions();
-        return;
-      }
       if (shownActions.length === 0) return;
 
       if (step !== 0) {
@@ -206,11 +225,6 @@ export function Palette({ games, actionsFor, onLaunch, onClose }: Props) {
       return;
     }
 
-    if (event.key === "Escape") {
-      event.preventDefault();
-      onClose();
-      return;
-    }
     if (results.length === 0) return;
 
     if (step !== 0) {
@@ -257,6 +271,7 @@ export function Palette({ games, actionsFor, onLaunch, onClose }: Props) {
             <SearchIcon />
           )}
           <input
+            ref={fieldRef}
             autoFocus
             type="text"
             value={target ? actionQuery : query}

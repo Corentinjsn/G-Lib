@@ -89,6 +89,13 @@ export function useGridKeys({
         return;
       }
 
+      // Rien d'autre ne passe pendant qu'un menu, une boite de dialogue ou la
+      // palette tient le clavier — champs de saisie compris. La palette a son
+      // propre champ : le Echap qui la fait remonter d'un niveau arrivait
+      // ensuite ici et lui retirait le focus, apres quoi plus aucune touche ne
+      // lui parvenait et elle ne se fermait plus.
+      if (!enabled) return;
+
       if (typing) {
         // Escape leaves a field rather than being swallowed by it.
         if (event.key === "Escape") target?.blur();
@@ -109,7 +116,6 @@ export function useGridKeys({
         }
         return;
       }
-      if (!enabled) return;
 
       // `/` used to focus the sidebar field, which searched only what the
       // current filter allowed. It opens the palette instead: the fast path to
