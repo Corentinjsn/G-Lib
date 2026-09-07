@@ -1,5 +1,5 @@
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
-import type { Collection, ScanResult } from "../types";
+import type { Collection, MarketItem, ScanResult } from "../types";
 
 /** Previous scan read straight off disk, so the grid can paint immediately. */
 export const loadCachedLibrary = () =>
@@ -13,6 +13,19 @@ export const fetchCatalog = () => invoke<ScanResult>("fetch_catalog");
 
 /** Re-reads the session log without rescanning the launchers. */
 export const refreshPlaytime = () => invoke<ScanResult>("refresh_playtime");
+
+/** Cherche un jeu a acheter, chez Steam faute d'autre catalogue public. */
+export const searchMarket = (query: string) =>
+  invoke<MarketItem[]>("search_market", { query });
+
+/**
+ * Ouvre une page de boutique dans le navigateur.
+ *
+ * Le backend n'accepte que les hotes qu'il connait : c'est lui qui decide, pas
+ * l'adresse qu'on lui tend.
+ */
+export const openStoreUrl = (url: string) =>
+  invoke<void>("open_store_url", { url });
 
 /**
  * Montre la fenetre principale et ferme celle du demarrage.
