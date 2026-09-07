@@ -56,6 +56,40 @@ pub fn launch_uri(uri: &str) -> Result<()> {
     shell_open(uri)
 }
 
+/// Les hotes chez qui la boutique a le droit d'emmener.
+///
+/// La liste est ici et pas dans l'interface : c'est le seul endroit qui
+/// compte. Une commande qui ouvrirait l'adresse qu'on lui donne serait une
+/// passerelle vers le shell, ou `file:` et les protocoles d'installeurs sont
+/// a portee de la premiere page qui la trouverait.
+const STORE_HOSTS: [&str; 5] = [
+    "store.steampowered.com",
+    "store.epicgames.com",
+    "www.ea.com",
+    "store.ubisoft.com",
+    "www.instant-gaming.com",
+];
+
+/// Ouvre une page de boutique, si c'en est une.
+pub fn open_store_url(url: &str) -> Result<()> {
+    let rest = url
+        .strip_prefix("https://")
+        .ok_or_else(|| anyhow!("seul https est accepte : {url}"))?;
+
+    // L'hote s'arrete au premier separateur ; sans cette coupe,
+    // `store.steampowered.com.exemple.test` passerait pour Steam.
+    let host = rest
+        .split(['/', '?', '#'])
+        .next()
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+
+    if !STORE_HOSTS.contains(&host.as_str()) {
+        return Err(anyhow!("boutique inconnue : {host}"));
+    }
+    shell_open(url)
+}
+
 /// Split a command line into its executable and the rest.
 ///
 /// An uninstall entry is one string: `"C:\...\setup.exe" /uninstall {GUID}`.
@@ -108,7 +142,18 @@ pub fn open_folder(path: &Path) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::split_command;
+    use super::{open_store_url, split_command};
+
+    /// Seuls les refus sont testes : le cas passant ouvrirait un navigateur.
+    #[test]
+    fn only_known_store_hosts_are_opened() {
+        // Un hote qui commence par celui d'une boutique n'en est pas une.
+        assert!(open_store_url("https://store.steampowered.com.exemple.test/app/1/").is_err());
+        assert!(open_store_url("https://exemple.test/store.steampowered.com").is_err());
+        assert!(open_store_url("http://store.steampowered.com/app/1/").is_err());
+        assert!(open_store_url("file:///C:/Windows/System32/cmd.exe").is_err());
+        assert!(open_store_url("steam://rungameid/1").is_err());
+    }
 
     #[test]
     fn splits_a_quoted_executable_from_its_arguments() {
