@@ -369,7 +369,9 @@ export function Market({ library, onError }: Props) {
 
         <div className="min-h-0 flex-1 overflow-y-auto">
           {results.length > 0 ? (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3 p-4">
+            // Largeur fixe, comme la grille de la bibliotheque : ouvrir une
+            // fiche ne doit pas redimensionner ce qu'on regarde.
+            <div className="grid grid-cols-[repeat(auto-fill,170px)] justify-start gap-3 p-4">
               {results.map((item) => (
                 <Card
                   key={item.appid}
