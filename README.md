@@ -79,11 +79,39 @@ masqués disparaissent de toutes les vues sauf « Masqués », qui n'apparaît q
 s'il y en a. Comme les listes, ces marques vivent dans leur propre fichier
 (`flags.json`) : chaque sync reconstruit la bibliothèque depuis les launchers.
 
-Au clavier : `/` pour la recherche, puis Entrée pour lancer le premier
-résultat sans quitter le champ — le nom du jeu visé est affiché sous la
-recherche, pour que le raccourci ne soit jamais un pari. Flèche bas pour
-passer du champ à la grille, flèches pour la parcourir, Entrée pour lancer,
-Échap pour sortir du champ.
+Au clavier : `Ctrl+K` ou `/` ouvre la palette, qui cherche dans toute la
+bibliothèque quels que soient les filtres, lance à l'Entrée et ouvre au `Tab`
+les actions du jeu sous le curseur. Dans la grille : flèches ou `hjkl` pour
+la parcourir, `gg`/`G` pour les extrémités, `Ctrl+D`/`Ctrl+U` par demi-écran,
+Entrée pour lancer, `f` pour le favori. Le champ « Filtrer » de la barre de
+grille ne fait que réduire ce qui est affiché ; la flèche bas en sort.
+
+### Boutique
+
+L'autre moitié de la question : les jeux qu'on ne possède pas encore. La
+recherche interroge le catalogue public de Steam — `storesearch` pour le
+classement, `GetItems` pour les fiches — et donne le résumé en français, le
+studio, la date de sortie, les captures et le prix en euros, remise comprise.
+Ni compte ni clé d'API.
+
+Les jeux déjà présents dans votre bibliothèque sont marqués comme tels, quelle
+que soit la plateforme qui les a fournis.
+
+Steam est la seule des quatre boutiques à publier tout cela : les autres n'ont
+pas de catalogue interrogeable sans contrat. Aucun prix n'est donc inventé
+pour elles — chaque fiche porte cinq boutons qui ouvrent Steam sur la fiche du
+jeu, et Epic, EA, Ubisoft et Instant Gaming sur leur propre recherche, titre
+déjà saisi. La liste des hôtes autorisés vit dans le backend
+(`launcher::open_store_url`) : une commande qui ouvrirait l'adresse qu'on lui
+tend serait une passerelle vers le shell.
+
+### Démarrage
+
+L'application ouvre une petite fenêtre le temps de lire les launchers et de
+chercher une mise à jour ; la fenêtre principale ne paraît qu'une fois la
+grille prête. Une mise à jour trouvée au démarrage s'installe là, avec sa
+barre de progression — le redémarrage jetterait de toute façon ce qui aurait
+été chargé.
 
 ### Jaquettes
 

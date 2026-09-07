@@ -4,6 +4,7 @@ mod cache;
 mod collections;
 mod flags;
 mod launcher;
+mod market;
 mod models;
 mod playtime;
 mod scanners;
@@ -229,6 +230,25 @@ fn set_collection_membership(
         .map_err(|e| format!("{e:#}"))
 }
 
+/// Cherche un jeu a acheter. Le reseau, donc hors du fil de l'interface.
+#[tauri::command]
+async fn search_market(query: String) -> Result<Vec<market::MarketItem>, String> {
+    tauri::async_runtime::spawn_blocking(move || market::search(&query))
+        .await
+        .map_err(|e| format!("recherche interrompue : {e}"))?
+}
+
+/// Ouvre une page de boutique dans le navigateur.
+///
+/// L'adresse est construite par l'interface, donc verifiee ici : seules les
+/// boutiques que l'application connait passent. Une commande qui ouvrirait
+/// n'importe quelle URL demandee par la page serait une passerelle vers le
+/// shell.
+#[tauri::command]
+fn open_store_url(url: String) -> Result<(), String> {
+    launcher::open_store_url(&url).map_err(|e| format!("{e:#}"))
+}
+
 /// Passe de la fenetre de demarrage a l'application.
 ///
 /// L'ordre compte : on montre la principale avant de fermer la petite, sinon
@@ -346,7 +366,9 @@ pub fn run() {
             rename_collection,
             delete_collection,
             set_collection_membership,
-            finish_splash
+            finish_splash,
+            search_market,
+            open_store_url
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -29,6 +29,28 @@ interface Props {
   errors: ScanError[];
   /** Total hidden games, counted outside the current view. */
   hiddenCount: number;
+  /** La boutique tient la place de la grille ; aucune ligne n'est active. */
+  market: boolean;
+  onOpenMarket: () => void;
+}
+
+/** Une etiquette de prix : ce qui s'achete, par opposition a ce qu'on a. */
+function StoreIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-4"
+    >
+      <path d="M20.6 12.6 12.4 20.8a2 2 0 0 1-2.8 0l-6.4-6.4a2 2 0 0 1 0-2.8l8.2-8.2a2 2 0 0 1 1.4-.6h5.4a2 2 0 0 1 2 2v5.4a2 2 0 0 1-.6 1.4Z" />
+      <path d="M16.5 7.5h.01" />
+    </svg>
+  );
 }
 
 function SectionLabel({
@@ -164,6 +186,8 @@ export function Sidebar({
   onNewCollection,
   errors,
   hiddenCount,
+  market,
+  onOpenMarket,
 }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -174,7 +198,9 @@ export function Sidebar({
       return next;
     });
 
-  const active = selectionKey(selection);
+  // Rien n'est actif dans la bibliotheque tant que la boutique est ouverte :
+  // les lignes ci-dessous decrivent une grille qui n'est pas a l'ecran.
+  const active = market ? "" : selectionKey(selection);
   const byPlatform = (platform: Game["platform"]) =>
     games.filter((game) => game.platform === platform);
   const inCollection = (collection: Collection) =>
@@ -197,6 +223,26 @@ export function Sidebar({
           regarde — filtre, installés, tri — appartient a la barre au-dessus de
           la grille, et la synchronisation a la barre de titre. */}
       <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
+        {/* En tete, et separee : ce n'est pas un ensemble de la bibliotheque
+            mais l'autre moitie de l'application — ce qu'on ne possede pas
+            encore. */}
+        <div
+          className={`mb-2 flex items-center rounded-md border-b border-line pb-2 transition ${
+            market ? "text-ink" : "text-ink-muted hover:text-ink"
+          }`}
+        >
+          <button
+            type="button"
+            onClick={onOpenMarket}
+            className={`flex min-w-0 flex-1 items-center gap-2 rounded-md py-1.5 pr-2.5 pl-5 text-left text-sm transition ${
+              market ? "bg-surface-3" : "hover:bg-surface-2"
+            }`}
+          >
+            <StoreIcon />
+            <span className="flex-1 truncate">Boutique</span>
+          </button>
+        </div>
+
         <GroupRow
           label="Tous les jeux"
           count={String(games.length)}

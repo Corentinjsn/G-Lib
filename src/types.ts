@@ -86,6 +86,33 @@ export const PLATFORM_COLORS: Record<Platform, string> = {
   ubisoft: "#2f7bff",
 };
 
+/* La boutique. Miroir de `src-tauri/src/market.rs`. */
+
+export interface MarketPrice {
+  /** Deja formate par Steam dans la monnaie du pays. */
+  current: string;
+  /** Prix barre, present seulement pendant une remise. */
+  original: string | null;
+  discount: number;
+}
+
+export interface MarketItem {
+  appid: number;
+  name: string;
+  coverUrl: string | null;
+  headerUrl: string | null;
+  shortDescription: string | null;
+  developers: string[];
+  publishers: string[];
+  /** Date de sortie Steam, en secondes epoch. */
+  releaseDate: number | null;
+  comingSoon: boolean;
+  free: boolean;
+  price: MarketPrice | null;
+  screenshots: string[];
+  storeUrl: string;
+}
+
 export type SortKey = "name" | "lastPlayed" | "playtime" | "size";
 
 export const SORT_LABELS: Record<SortKey, string> = {
