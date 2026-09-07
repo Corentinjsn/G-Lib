@@ -15,6 +15,16 @@ export default defineConfig(async () => ({
   plugins: [react(), tailwindcss()],
   define: { __APP_VERSION__: JSON.stringify(version) },
 
+  // Deux pages : l'application, et la petite fenetre de demarrage qui parait
+  // pendant que la premiere se prepare. Sans cette liste, seul index.html
+  // arriverait dans dist et la fenetre de demarrage afficherait un 404 dans
+  // la version installee — jamais en developpement, ou Vite sert la racine.
+  build: {
+    rollupOptions: {
+      input: { main: "index.html", splash: "splash.html" },
+    },
+  },
+
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
   // 1. prevent Vite from obscuring rust errors

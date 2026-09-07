@@ -6,13 +6,14 @@ import {
   useState,
   type MouseEvent,
 } from "react";
+import { emit } from "@tauri-apps/api/event";
 import { ContextMenu, type MenuState } from "./components/ContextMenu";
 import { GameDetail } from "./components/GameDetail";
 import { GameGrid } from "./components/GameGrid";
 import { NameDialog } from "./components/NameDialog";
 import { Palette, type PaletteAction } from "./components/Palette";
 import { Sidebar } from "./components/Sidebar";
-import { Splash, type SplashStep } from "./components/Splash";
+import { Splash } from "./components/Splash";
 import { TitleBar } from "./components/TitleBar";
 import { ViewBar } from "./components/ViewBar";
 import { useCollections } from "./hooks/useCollections";
@@ -20,6 +21,7 @@ import { useGridKeys } from "./hooks/useGridKeys";
 import { useLibrary } from "./hooks/useLibrary";
 import { useUpdate } from "./hooks/useUpdate";
 import {
+  finishSplash,
   launchGame,
   openInstallDir,
   setGameFlag,
@@ -32,6 +34,7 @@ import {
   selectGames,
   universe,
 } from "./lib/library";
+import { SPLASH_EVENT, type SplashState, type SplashStep } from "./lib/splash";
 import {
   INSTALL_FILTER_LABELS,
   PLATFORM_LABELS,
@@ -41,6 +44,19 @@ import {
   type Selection,
   type SortKey,
 } from "./types";
+
+/**
+ * Duree minimale de la fenetre de demarrage, en millisecondes.
+ *
+ * Avec un cache chaud, la grille est prete en moins d'une demi-seconde : la
+ * petite fenetre paraitrait et disparaitrait dans le meme battement de cil,
+ * ce qui se lit comme un defaut et non comme un demarrage. Elle tient donc le
+ * temps qu'il faut pour etre vue.
+ */
+const SPLASH_FLOOR_MS = 900;
+
+/** L'instant ou le module est evalue, au plus pres de l'ouverture. */
+const STARTED_AT = Date.now();
 
 /** Which naming prompt is open, if any. */
 type Dialog =
@@ -107,6 +123,45 @@ export default function App() {
             : "pending",
     },
   ];
+
+  /* La fenetre principale demarre cachee ; ce qu'on voit au demarrage est une
+     petite fenetre a part, qui ne sait rien par elle-meme. Elle recoit donc
+     l'etat a chaque changement, et cede la place quand il y a une grille a
+     montrer.
+
+     La comparaison passe par le texte : l'objet est reconstruit a chaque
+     rendu, et on n'a pas de raison de reveiller l'autre fenetre pour un objet
+     identique. */
+  const splashState: SplashState = {
+    steps: splashSteps,
+    update: updating
+      ? { version: update.version, progress: update.progress }
+      : null,
+  };
+  const splashJson = JSON.stringify(splashState);
+
+  useEffect(() => {
+    void emit(SPLASH_EVENT, JSON.parse(splashJson) as SplashState);
+  }, [splashJson]);
+
+  useEffect(() => {
+    if (!ready) return;
+    let cancelled = false;
+    const wait = Math.max(0, SPLASH_FLOOR_MS - (Date.now() - STARTED_AT));
+    const timer = setTimeout(() => {
+      // Deux images d'attente : l'effet part avant que le navigateur n'ait
+      // peint, et devoiler la fenetre a cet instant la montrerait vide.
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          if (!cancelled) void finishSplash();
+        }),
+      );
+    }, wait);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [ready]);
 
   const allGames = useMemo(() => result?.games ?? [], [result]);
   const hiddenCount = useMemo(

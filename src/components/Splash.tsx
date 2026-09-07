@@ -1,17 +1,5 @@
+import type { SplashStep, SplashUpdate, StepState } from "../lib/splash";
 import { LogoMark } from "./LogoMark";
-
-export type StepState = "pending" | "active" | "done";
-
-export interface SplashStep {
-  label: string;
-  state: StepState;
-}
-
-export interface SplashUpdate {
-  version: string | null;
-  /** 0 to 1. Stays at 0 until the server reports a content length. */
-  progress: number;
-}
 
 function Marker({ state }: { state: StepState }) {
   if (state === "done") {

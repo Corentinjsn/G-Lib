@@ -14,6 +14,14 @@ export const fetchCatalog = () => invoke<ScanResult>("fetch_catalog");
 /** Re-reads the session log without rescanning the launchers. */
 export const refreshPlaytime = () => invoke<ScanResult>("refresh_playtime");
 
+/**
+ * Montre la fenetre principale et ferme celle du demarrage.
+ *
+ * C'est le frontend qui decide du moment : lui seul sait si la grille a de
+ * quoi se peindre.
+ */
+export const finishSplash = () => invoke<void>("finish_splash");
+
 export const launchGame = (id: string) => invoke<void>("launch_game", { id });
 
 /** Hands the game to its launcher's uninstall flow. */
