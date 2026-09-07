@@ -113,6 +113,15 @@ export interface MarketItem {
   storeUrl: string;
 }
 
+/** Ce que le meme jeu coute chez une autre boutique. */
+export interface StoreOffer {
+  /** Le meme identifiant que `StoreLink.id`. */
+  store: string;
+  price: MarketPrice | null;
+  /** Page du jeu, quand la boutique l'a nommee. */
+  url: string | null;
+}
+
 export type SortKey = "name" | "lastPlayed" | "playtime" | "size";
 
 export const SORT_LABELS: Record<SortKey, string> = {

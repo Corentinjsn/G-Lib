@@ -1,8 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { openStoreUrl, searchMarket } from "../lib/api";
+import instantGamingMark from "../assets/instant-gaming.png";
+import { openStoreUrl, searchMarket, storeOffers } from "../lib/api";
 import { normalize } from "../lib/format";
 import { storeLinks, type StoreLink } from "../lib/stores";
-import { PLATFORM_COLORS, type Game, type MarketItem } from "../types";
+import {
+  PLATFORM_COLORS,
+  type Game,
+  type MarketItem,
+  type MarketPrice,
+  type StoreOffer,
+} from "../types";
 import { PlatformIcon } from "./PlatformIcon";
 
 interface Props {
@@ -34,7 +41,34 @@ function SearchIcon() {
   );
 }
 
-/** Le prix, remise comprise, ou ce qui en tient lieu. */
+/** Un prix, remise comprise. La pastille verte est celle de Steam. */
+function PriceTag({
+  price,
+  large = false,
+}: {
+  price: MarketPrice;
+  large?: boolean;
+}) {
+  const size = large ? "text-base" : "text-[13px]";
+
+  return (
+    <span className="flex items-center gap-2">
+      {price.discount > 0 && (
+        <>
+          <span className="rounded bg-[#4c6b22] px-1.5 py-0.5 text-[11px] font-semibold text-[#beee11]">
+            −{price.discount} %
+          </span>
+          <span className="text-[11px] text-ink-faint line-through">
+            {price.original}
+          </span>
+        </>
+      )}
+      <span className={`${size} font-semibold text-ink`}>{price.current}</span>
+    </span>
+  );
+}
+
+/** Le prix Steam du jeu, ou ce qui en tient lieu. */
 function Price({ item, large = false }: { item: MarketItem; large?: boolean }) {
   const size = large ? "text-base" : "text-[13px]";
 
@@ -48,24 +82,7 @@ function Price({ item, large = false }: { item: MarketItem; large?: boolean }) {
       </span>
     );
   }
-
-  return (
-    <span className="flex items-center gap-2">
-      {item.price.discount > 0 && (
-        <>
-          <span className="rounded bg-[#4c6b22] px-1.5 py-0.5 text-[11px] font-semibold text-[#beee11]">
-            −{item.price.discount} %
-          </span>
-          <span className={`${size} text-ink-faint line-through`}>
-            {item.price.original}
-          </span>
-        </>
-      )}
-      <span className={`${size} font-semibold text-ink`}>
-        {item.price.current}
-      </span>
-    </span>
-  );
+  return <PriceTag price={item.price} large={large} />;
 }
 
 function Card({
@@ -126,11 +143,25 @@ function Card({
   );
 }
 
+/**
+ * Une boutique, et ce qu'elle demande pour ce jeu.
+ *
+ * Le prix n'arrive pas avec la fiche : il faut le chercher chez chacune. Tant
+ * qu'il n'est pas la, la ligne dit ce qu'elle sait deja — qu'elle mene a une
+ * fiche ou a une recherche — plutot que de laisser un trou qui se remplira.
+ */
 function StoreButton({
   link,
+  price,
+  loading,
+  exact,
   onOpen,
 }: {
   link: StoreLink;
+  price: MarketPrice | null;
+  loading: boolean;
+  /** La boutique a nomme la page du jeu, plutot qu'une recherche. */
+  exact: boolean;
   onOpen: (link: StoreLink) => void;
 }) {
   return (
@@ -138,7 +169,7 @@ function StoreButton({
       type="button"
       onClick={() => onOpen(link)}
       title={
-        link.exact
+        exact
           ? `Ouvrir la fiche ${link.label}`
           : `Chercher ce titre sur ${link.label}`
       }
@@ -149,16 +180,26 @@ function StoreButton({
           <PlatformIcon platform={link.platform} className="size-4" />
         </span>
       ) : (
-        // Instant Gaming n'est pas une plateforme de la bibliotheque : pas de
-        // marque a emprunter, une etiquette fera l'affaire.
-        <span className="flex size-4 items-center justify-center text-[13px] text-[#fa4b4b]">
-          ⌁
-        </span>
+        <img
+          src={instantGamingMark}
+          alt=""
+          draggable={false}
+          className="size-4 shrink-0"
+        />
       )}
       <span className="min-w-0 flex-1 truncate">{link.label}</span>
-      <span className="shrink-0 text-[10px] text-ink-faint">
-        {link.exact ? "fiche" : (link.note ?? "recherche")}
-      </span>
+
+      {price ? (
+        <PriceTag price={price} />
+      ) : loading ? (
+        <span className="shrink-0 animate-pulse text-[10px] text-ink-faint">
+          …
+        </span>
+      ) : (
+        <span className="shrink-0 text-[10px] text-ink-faint">
+          {exact ? "fiche" : (link.note ?? "recherche")}
+        </span>
+      )}
     </button>
   );
 }
@@ -174,6 +215,27 @@ function Detail({
   onClose: () => void;
   onOpen: (link: StoreLink) => void;
 }) {
+  // null tant que la reponse n'est pas la : c'est ce qui distingue « on
+  // cherche encore » de « cette boutique ne l'a pas ».
+  const [offers, setOffers] = useState<StoreOffer[] | null>(null);
+
+  useEffect(() => {
+    setOffers(null);
+    let cancelled = false;
+    storeOffers(item.name)
+      .then((found) => {
+        if (!cancelled) setOffers(found);
+      })
+      // Un prix absent n'a rien d'un incident : la ligne redevient un simple
+      // lien de recherche, et l'utilisateur n'a pas a etre averti.
+      .catch(() => {
+        if (!cancelled) setOffers([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [item.appid, item.name]);
+
   const released = item.releaseDate
     ? new Date(item.releaseDate * 1000).toLocaleDateString("fr-FR", {
         day: "numeric",
@@ -255,11 +317,32 @@ function Detail({
           <span className="text-[10px] tracking-widest text-ink-faint uppercase">
             Acheter
           </span>
-          {/* Steam ouvre la fiche du jeu ; les autres n'ont pas de catalogue
-              public a interroger, donc leur recherche, titre deja saisi. */}
-          {storeLinks(item).map((link) => (
-            <StoreButton key={link.id} link={link} onOpen={onOpen} />
-          ))}
+          {/* Steam donne son prix avec la fiche ; Epic, Ubisoft et Instant
+              Gaming sont interroges a l'ouverture. EA ne publie rien. */}
+          {storeLinks(item).map((link) => {
+            const offer = offers?.find((entry) => entry.store === link.id);
+            const price =
+              link.id === "steam" ? (item.free ? null : item.price) : (offer?.price ?? null);
+
+            return (
+              <StoreButton
+                key={link.id}
+                // La boutique a souvent nomme la page exacte du jeu ; on la
+                // prefere alors a sa recherche.
+                link={offer?.url ? { ...link, url: offer.url } : link}
+                price={price}
+                loading={link.id !== "steam" && offers === null && link.id !== "ea"}
+                exact={link.exact || Boolean(offer?.url)}
+                onOpen={onOpen}
+              />
+            );
+          })}
+
+          {/* Dit une fois, en bas, plutot que sur chaque ligne muette. */}
+          <p className="pt-1 text-[11px] leading-snug text-ink-faint">
+            EA ne publie aucun prix hors de son application : sa ligne mène à
+            une recherche.
+          </p>
         </div>
       </div>
     </aside>
