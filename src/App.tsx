@@ -10,6 +10,7 @@ import { emit } from "@tauri-apps/api/event";
 import { ContextMenu, type MenuState } from "./components/ContextMenu";
 import { GameDetail } from "./components/GameDetail";
 import { GameGrid } from "./components/GameGrid";
+import { Market } from "./components/Market";
 import { NameDialog } from "./components/NameDialog";
 import { Palette, type PaletteAction } from "./components/Palette";
 import { Sidebar } from "./components/Sidebar";
@@ -92,6 +93,9 @@ export default function App() {
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  /* La boutique prend la place de la grille plutot que de s'ouvrir par-dessus :
+     on y va pour chercher, pas pour jeter un oeil. */
+  const [market, setMarket] = useState(false);
   const gridScroll = useRef<HTMLDivElement>(null);
 
   const showError = useCallback((message: string) => setToast(message), []);
@@ -481,6 +485,12 @@ export default function App() {
     }
   }, [selection, collections.collections, installFilter]);
 
+  /** Toute navigation dans la bibliotheque ramene de la boutique. */
+  const selectSection = (next: Selection) => {
+    setMarket(false);
+    setSelection(next);
+  };
+
   useGridKeys({
     games: visible,
     selectedId,
@@ -492,8 +502,9 @@ export default function App() {
     paletteOpen,
     gridRef: gridScroll,
     // A context menu, a dialog or the palette owns the keyboard while it is
-    // open; the palette runs its own motions over its own results.
-    enabled: menu === null && dialog === null && !paletteOpen,
+    // open; the palette runs its own motions over its own results. La
+    // boutique a son propre champ et sa propre grille.
+    enabled: menu === null && dialog === null && !paletteOpen && !market,
   });
 
   // La barre de titre est rendue avant tout le reste, y compris pendant le
@@ -546,7 +557,7 @@ export default function App() {
           unscopedGames={unhidden}
           collections={collections.collections}
           selection={selection}
-          onSelectionChange={setSelection}
+          onSelectionChange={selectSection}
           selectedGameId={selectedId}
           onSelectGame={(game) => setSelectedId(game.id)}
           onGameContextMenu={openGameMenu}
@@ -554,56 +565,69 @@ export default function App() {
           onNewCollection={() => setDialog({ mode: "create" })}
           errors={result?.errors ?? []}
           hiddenCount={hiddenCount}
+          market={market}
+          onOpenMarket={() => {
+            setMarket(true);
+            // Le panneau de detail decrit un jeu de la grille, qui n'est plus
+            // la.
+            setSelectedId(null);
+          }}
         />
 
-        <main className="flex min-w-0 flex-1 flex-col">
-          <ViewBar
-            count={visible.length}
-            scopeLabel={scopeLabel}
-            status={
-              status === "scanning"
-                ? "Lecture des launchers…"
-                : status === "fetching-catalog"
-                  ? "Catalogue en ligne…"
-                  : null
-            }
-            query={query}
-            onQueryChange={setQuery}
-            installFilter={installFilter}
-            onInstallFilterChange={setInstallFilter}
-            installCounts={counts}
-            sort={sort}
-            onSortChange={setSort}
-          />
+        {market ? (
+          <Market library={allGames} onError={showError} />
+        ) : (
+          <>
+          <main className="flex min-w-0 flex-1 flex-col">
+            <ViewBar
+              count={visible.length}
+              scopeLabel={scopeLabel}
+              status={
+                status === "scanning"
+                  ? "Lecture des launchers…"
+                  : status === "fetching-catalog"
+                    ? "Catalogue en ligne…"
+                    : null
+              }
+              query={query}
+              onQueryChange={setQuery}
+              installFilter={installFilter}
+              onInstallFilterChange={setInstallFilter}
+              installCounts={counts}
+              sort={sort}
+              onSortChange={setSort}
+            />
 
-          <div ref={gridScroll} className="min-h-0 flex-1 overflow-y-auto">
-            {visible.length > 0 ? (
-              <GameGrid
-                games={visible}
-                selectedId={selectedId}
-                onSelect={(game) => setSelectedId(game.id)}
-                onLaunch={handleLaunch}
-                onContextMenu={openGameMenu}
-                onToggleFavorite={(game) =>
-                  void toggleFlag(game, "favorite", !game.favorite)
-                }
-              />
-            ) : (
-              <EmptyState scanning={status !== "idle"} />
-            )}
-          </div>
-        </main>
+            <div ref={gridScroll} className="min-h-0 flex-1 overflow-y-auto">
+              {visible.length > 0 ? (
+                <GameGrid
+                  games={visible}
+                  selectedId={selectedId}
+                  onSelect={(game) => setSelectedId(game.id)}
+                  onLaunch={handleLaunch}
+                  onContextMenu={openGameMenu}
+                  onToggleFavorite={(game) =>
+                    void toggleFlag(game, "favorite", !game.favorite)
+                  }
+                />
+              ) : (
+                <EmptyState scanning={status !== "idle"} />
+              )}
+            </div>
+          </main>
 
-        {selected && (
-          <GameDetail
-            game={selected}
-            onClose={() => setSelectedId(null)}
-            onLaunch={() => handleLaunch(selected)}
-            onOpenFolder={() => handleOpenFolder(selected)}
-            onToggleFavorite={() =>
-              void toggleFlag(selected, "favorite", !selected.favorite)
-            }
-          />
+          {selected && (
+            <GameDetail
+              game={selected}
+              onClose={() => setSelectedId(null)}
+              onLaunch={() => handleLaunch(selected)}
+              onOpenFolder={() => handleOpenFolder(selected)}
+              onToggleFavorite={() =>
+                void toggleFlag(selected, "favorite", !selected.favorite)
+              }
+            />
+          )}
+          </>
         )}
       </div>
 

@@ -11,7 +11,7 @@
 
 use std::time::Duration;
 
-const ASSET_HOST: &str = "https://shared.cloudflare.steamstatic.com/store_item_assets/";
+pub const ASSET_HOST: &str = "https://shared.cloudflare.steamstatic.com/store_item_assets/";
 const SEARCH: &str = "https://steamcommunity.com/actions/SearchApps/";
 const GET_ITEMS: &str = "https://api.steampowered.com/IStoreBrowseService/GetItems/v1/";
 
