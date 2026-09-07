@@ -92,33 +92,15 @@ export function GameCard({
         )}
       </div>
 
-      <div className="absolute top-1.5 left-1.5">
-        <PlatformBadge platform={game.platform} />
-      </div>
+      {/* D'ou vient le jeu, et dans quel etat il est : deux faits de meme
+          nature, donc une seule rangee.
 
-      {/* Everything lives along the top edge: the hover overlay fills the
-          bottom of the card with the title and the play button, so anything
-          down there would be buried the moment the pointer arrives. */}
-      <div className="absolute top-1.5 right-1.5 flex flex-col items-end gap-1">
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onToggleFavorite();
-          }}
-          // Sans cela, deux clics rapides pour poser puis retirer l'étoile
-          // atteignent le double-clic de la carte et lancent le jeu.
-          onDoubleClick={(event) => event.stopPropagation()}
-          aria-label={game.favorite ? "Retirer des favoris" : "Mettre en favori"}
-          title={game.favorite ? "Retirer des favoris" : "Mettre en favori"}
-          className={`${BADGE_BOX} text-[13px] leading-none transition ${
-            game.favorite
-              ? "text-yellow-400"
-              : "text-ink-faint opacity-0 group-hover:opacity-100 hover:text-yellow-400"
-          }`}
-        >
-          {game.favorite ? "★" : "☆"}
-        </button>
+          L'etat etait range sous l'etoile, dans la colonne de droite. Or
+          l'etoile est invisible tant qu'on ne survole pas la carte et que le
+          jeu n'est pas un favori — mais elle occupe sa place : la fleche
+          flottait donc une hauteur de badge sous le coin, accrochee a rien. */}
+      <div className="absolute top-1.5 left-1.5 flex items-center gap-1">
+        <PlatformBadge platform={game.platform} />
 
         {game.needsUpdate && (
           <span
@@ -138,6 +120,31 @@ export function GameCard({
             ↓
           </span>
         )}
+      </div>
+
+      {/* Tout se tient le long du bord haut : le survol remplit le bas de la
+          carte avec le titre et le bouton de lancement, et enterrerait ce
+          qu'on aurait mis la. */}
+      <div className="absolute top-1.5 right-1.5">
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggleFavorite();
+          }}
+          // Sans cela, deux clics rapides pour poser puis retirer l'étoile
+          // atteignent le double-clic de la carte et lancent le jeu.
+          onDoubleClick={(event) => event.stopPropagation()}
+          aria-label={game.favorite ? "Retirer des favoris" : "Mettre en favori"}
+          title={game.favorite ? "Retirer des favoris" : "Mettre en favori"}
+          className={`${BADGE_BOX} text-[13px] leading-none transition ${
+            game.favorite
+              ? "text-yellow-400"
+              : "text-ink-faint opacity-0 group-hover:opacity-100 hover:text-yellow-400"
+          }`}
+        >
+          {game.favorite ? "★" : "☆"}
+        </button>
       </div>
 
       {/* Action affordance, revealed on hover so the art stays unobstructed. */}
