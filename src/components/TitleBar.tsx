@@ -252,9 +252,19 @@ export function TitleBar({
           <RefreshIcon />
         </button>
 
+        {/* La barre porte deux familles de boutons : ceux de l'application et
+            ceux de la fenetre. Rien ne les distinguait puisqu'ils partagent la
+            meme trame et le meme ton — le trait dit ou l'une finit. */}
+        <span aria-hidden className="mx-1.5 h-4 w-px bg-line" />
+
         {/* Sans fond : l'icone seule, sur la meme trame que les boutons de
             fenetre. C'est le vert qui la fait remarquer, une pastille
-            n'ajouterait que du bruit dans une barre haute de huit points. */}
+            n'ajouterait que du bruit dans une barre haute de huit points.
+
+            Elle se range du cote fenetre, collee aux trois boutons systeme,
+            la ou Discord la met : ce n'est pas une commande de plus mais une
+            alerte, et elle ne doit pas deplacer le bouton de sync a chaque
+            fois qu'une version parait. */}
         {updateVersion && (
           <button
             type="button"
@@ -275,11 +285,6 @@ export function TitleBar({
             )}
           </button>
         )}
-
-        {/* La barre porte deux familles de boutons : ceux de l'application et
-            ceux de la fenetre. Rien ne les distinguait puisqu'ils partagent la
-            meme trame et le meme ton — le trait dit ou l'une finit. */}
-        <span aria-hidden className="mx-1.5 h-4 w-px bg-line" />
 
         {/* Sized and coloured like the system's own, close included: a title
             bar that behaves like one is worth more than a styled one. */}
