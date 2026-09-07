@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gamlib</title>
+
+    <!--
+      Tout est ici, en clair : styles, logo, etapes.
+
+      Cette fenetre n'a qu'un travail, paraitre tout de suite. Une feuille de
+      styles a charger ou un bundle React a evaluer, et elle reste un
+      rectangle noir pendant le temps que dure le demarrage — c'est-a-dire
+      pendant toute sa vie. Le script qui suit ne fait que remplacer du texte
+      dans une page deja peinte.
+    -->
+    <style>
+      :root {
+        --surface-0: #0b0d12;
+        --surface-2: #1a1f2b;
+        --surface-3: #232936;
+        --ink: #e6e9ef;
+        --ink-muted: #8b93a7;
+        --ink-faint: #5c6478;
+        --accent: #66c0f4;
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+      }
+
+      body {
+        background: var(--surface-0);
+        color: var(--ink);
+        font-family: "Segoe UI Variable Display", "Segoe UI", system-ui,
+          sans-serif;
+        user-select: none;
+        cursor: default;
+      }
+
+      main {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 26px;
+      }
+
+      .mark {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 92px;
+        height: 92px;
+      }
+
+      .mark svg {
+        width: 92px;
+        height: 92px;
+        color: #f6f4f0;
+      }
+
+      .halo {
+        position: absolute;
+        width: 92px;
+        height: 92px;
+        border-radius: 999px;
+        background: var(--accent);
+        filter: blur(28px);
+        opacity: 0;
+      }
+
+      h1 {
+        margin: 10px 0 0;
+        font-size: 30px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        line-height: 1;
+      }
+
+      .version {
+        margin: 6px 0 0;
+        font-size: 11px;
+        color: var(--ink-faint);
+      }
+
+      ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        width: 216px;
+      }
+
+      li {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 13px;
+        color: var(--ink-faint);
+      }
+
+      li[data-state="active"],
+      li[data-state="done"] {
+        color: var(--ink-muted);
+      }
+
+      .marker {
+        width: 16px;
+        display: flex;
+        justify-content: center;
+      }
+
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: var(--surface-3);
+      }
+
+      li[data-state="active"] .dot {
+        background: var(--accent);
+        animation: pulse 1.6s ease-in-out infinite;
+      }
+
+      li[data-state="done"] .dot {
+        display: none;
+      }
+
+      .tick {
+        display: none;
+        color: var(--accent);
+        font-size: 13px;
+        line-height: 1;
+      }
+
+      li[data-state="done"] .tick {
+        display: block;
+      }
+
+      /* La mise a jour remplace les etapes : le redemarrage va les jeter. */
+      #update {
+        display: none;
+        width: 216px;
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+      }
+
+      #update p {
+        margin: 0;
+        font-size: 13px;
+        color: var(--ink-muted);
+      }
+
+      #update .hint {
+        font-size: 11px;
+        color: var(--ink-faint);
+      }
+
+      .bar {
+        height: 6px;
+        border-radius: 999px;
+        background: var(--surface-2);
+        overflow: hidden;
+      }
+
+      .bar span {
+        display: block;
+        height: 100%;
+        width: 0%;
+        border-radius: 999px;
+        background: var(--accent);
+        transition: width 0.2s ease;
+      }
+
+      body[data-updating="yes"] #steps {
+        display: none;
+      }
+
+      body[data-updating="yes"] #update {
+        display: flex;
+      }
+
+      body[data-updating="yes"] .halo {
+        animation: halo 2.4s ease-in-out infinite;
+      }
+
+      body[data-updating="yes"] .mark svg {
+        animation: breathe 2.4s ease-in-out infinite;
+      }
+
+      #quit {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 34px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        background: none;
+        color: var(--ink-faint);
+        font-size: 13px;
+        cursor: pointer;
+      }
+
+      #quit:hover {
+        color: var(--ink);
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.35;
+        }
+      }
+
+      @keyframes breathe {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.06);
+        }
+      }
+
+      @keyframes halo {
+        0%,
+        100% {
+          opacity: 0.2;
+          transform: scale(0.85);
+        }
+        50% {
+          opacity: 0.55;
+          transform: scale(1.2);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation: none !important;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <main data-tauri-drag-region>
+      <!-- Un demarrage peut s'eterniser : un launcher qui ne repond pas, un
+           reseau qui traine. Sans cette croix il faudrait le gestionnaire des
+           taches pour en sortir. -->
+      <button id="quit" type="button" title="Quitter" aria-label="Quitter">
+        ✕
+      </button>
+
+      <div class="mark">
+        <span class="halo" aria-hidden="true"></span>
+        <!-- Le meme dessin que components/LogoMark, fige : trois cartes en
+             eventail, le G au centre. -->
+        <svg viewBox="0 0 150 112" role="img" aria-label="Gamlib">
+          <g>
+            <rect
+              x="47"
+              y="8"
+              width="56"
+              height="84"
+              rx="16"
+              fill="currentColor"
+              stroke="#0b0d12"
+              stroke-width="3"
+              transform="rotate(-21 75 96)"
+            />
+          </g>
+          <g>
+            <rect
+              x="47"
+              y="8"
+              width="56"
+              height="84"
+              rx="16"
+              fill="currentColor"
+              stroke="#0b0d12"
+              stroke-width="3"
+              transform="rotate(21 75 96)"
+            />
+          </g>
+          <g>
+            <rect
+              x="53"
+              y="4"
+              width="44"
+              height="90"
+              rx="22"
+              fill="currentColor"
+              stroke="#0b0d12"
+              stroke-width="3"
+            />
+            <text
+              x="75"
+              y="49"
+              text-anchor="middle"
+              dominant-baseline="central"
+              fill="#0b0d12"
+              font-size="46"
+              font-weight="700"
+              font-family="'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif"
+            >
+              G
+            </text>
+          </g>
+        </svg>
+      </div>
+
+      <div>
+        <h1>Gamlib</h1>
+        <p class="version" id="version"></p>
+      </div>
+
+      <ul id="steps">
+        <li data-state="active">
+          <span class="marker"
+            ><span class="dot"></span><span class="tick">✓</span></span
+          >
+          <span class="label">Vérification des mises à jour</span>
+        </li>
+        <li data-state="pending">
+          <span class="marker"
+            ><span class="dot"></span><span class="tick">✓</span></span
+          >
+          <span class="label">Lecture des launchers</span>
+        </li>
+        <li data-state="pending">
+          <span class="marker"
+            ><span class="dot"></span><span class="tick">✓</span></span
+          >
+          <span class="label">Catalogue en ligne</span>
+        </li>
+      </ul>
+
+      <div id="update">
+        <p id="update-title">Mise à jour</p>
+        <div class="bar"><span id="update-bar"></span></div>
+        <p class="hint" id="update-hint"></p>
+      </div>
+    </main>
+
+    <script type="module" src="/src/splash.ts"></script>
+  </body>
+</html>
