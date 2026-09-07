@@ -170,6 +170,30 @@
   animation: gamlib-palette-in 120ms ease-out;
 }
 
+/* Le squelette : la place que le contenu prendra, en attendant qu'il arrive.
+   La lueur qui traverse dit que quelque chose est en cours ; la forme, elle,
+   evite que la page se reorganise a l'arrivee de chaque image. */
+@keyframes gamlib-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+.skeleton {
+  background-color: var(--color-surface-2);
+  background-image: linear-gradient(
+    90deg,
+    transparent 20%,
+    color-mix(in srgb, var(--color-surface-3) 85%, white) 50%,
+    transparent 80%
+  );
+  background-size: 200% 100%;
+  animation: gamlib-shimmer 1.5s ease-in-out infinite;
+}
+
 /* Motion is decoration here; anyone who asked for less gets a still logo. */
 @media (prefers-reduced-motion: reduce) {
   .logo-card-left,
@@ -177,7 +201,8 @@
   .logo-card-front,
   .logo-breathe,
   .logo-halo,
-  .palette-in {
+  .palette-in,
+  .skeleton {
     animation: none;
   }
 }
