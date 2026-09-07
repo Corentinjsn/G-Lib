@@ -229,6 +229,22 @@ fn set_collection_membership(
         .map_err(|e| format!("{e:#}"))
 }
 
+/// Passe de la fenetre de demarrage a l'application.
+///
+/// L'ordre compte : on montre la principale avant de fermer la petite, sinon
+/// il existe un instant ou aucune fenetre n'est visible — et la fermeture de
+/// la fenetre de demarrage vaut alors « quitter » (voir `setup`).
+#[tauri::command]
+fn finish_splash(app: AppHandle) {
+    if let Some(main) = app.get_webview_window("main") {
+        let _ = main.show();
+        let _ = main.set_focus();
+    }
+    if let Some(splash) = app.get_webview_window("splash") {
+        let _ = splash.close();
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -242,16 +258,50 @@ pub fn run() {
         // and restoring it put the system title bar back over the one the
         // application draws itself. What the window looks like is the
         // application's decision, not a piece of session state.
+        //
+        // VISIBLE l'est aussi, depuis que la fenetre principale demarre
+        // cachee : la restaurer visible la ferait paraitre vide a cote de la
+        // fenetre de demarrage.
         .plugin(
             tauri_plugin_window_state::Builder::default()
                 .with_state_flags(
                     tauri_plugin_window_state::StateFlags::all()
-                        - tauri_plugin_window_state::StateFlags::DECORATIONS,
+                        - tauri_plugin_window_state::StateFlags::DECORATIONS
+                        - tauri_plugin_window_state::StateFlags::VISIBLE,
                 )
                 .build(),
         )
         .manage(Library::default())
         .setup(|app| {
+            // La fenetre principale demarre cachee et c'est le frontend qui la
+            // revele quand il a quelque chose a montrer. Si la petite fenetre
+            // n'existe pas — configuration changee, creation refusee — plus
+            // personne ne la revelerait : on la montre tout de suite.
+            match app.get_webview_window("splash") {
+                None => {
+                    if let Some(main) = app.get_webview_window("main") {
+                        let _ = main.show();
+                    }
+                }
+                Some(splash) => {
+                    // Fermer la fenetre de demarrage quand elle est seule a
+                    // l'ecran, c'est renoncer au demarrage. Sans cela le
+                    // processus survivrait sans aucune fenetre visible.
+                    let handle = app.handle().clone();
+                    splash.on_window_event(move |event| {
+                        if matches!(event, tauri::WindowEvent::CloseRequested { .. }) {
+                            let shown = handle
+                                .get_webview_window("main")
+                                .and_then(|main| main.is_visible().ok())
+                                == Some(true);
+                            if !shown {
+                                handle.exit(0);
+                            }
+                        }
+                    });
+                }
+            }
+
             // Watching processes is how every platform gets a play history,
             // so it starts with the app rather than with the first scan.
             if let Ok(dir) = app.path().app_data_dir() {
@@ -295,7 +345,8 @@ pub fn run() {
             create_collection,
             rename_collection,
             delete_collection,
-            set_collection_membership
+            set_collection_membership,
+            finish_splash
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
