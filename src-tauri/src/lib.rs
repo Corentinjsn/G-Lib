@@ -6,6 +6,7 @@ mod flags;
 mod launcher;
 mod market;
 mod models;
+mod offers;
 mod playtime;
 mod scanners;
 mod steam_store;
@@ -238,6 +239,21 @@ async fn search_market(query: String) -> Result<Vec<market::MarketItem>, String>
         .map_err(|e| format!("recherche interrompue : {e}"))?
 }
 
+/// Ce que le meme jeu coute chez Epic, Ubisoft et Instant Gaming.
+///
+/// Separe de `search_market` : trois requetes de plus par jeu, dont deux
+/// lisent une page entiere. On ne les lance que pour la fiche ouverte, pas
+/// pour chacun des douze resultats d'une recherche.
+#[tauri::command]
+async fn store_offers(name: String) -> Result<Vec<offers::StoreOffer>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let client = steam_store::client().ok_or_else(|| "client http indisponible".to_string())?;
+        Ok(offers::lookup(&client, &name))
+    })
+    .await
+    .map_err(|e| format!("recherche interrompue : {e}"))?
+}
+
 /// Ouvre une page de boutique dans le navigateur.
 ///
 /// L'adresse est construite par l'interface, donc verifiee ici : seules les
@@ -368,6 +384,7 @@ pub fn run() {
             set_collection_membership,
             finish_splash,
             search_market,
+            store_offers,
             open_store_url
         ])
         .run(tauri::generate_context!())

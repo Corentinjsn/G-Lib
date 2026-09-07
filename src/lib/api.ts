@@ -1,5 +1,10 @@
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
-import type { Collection, MarketItem, ScanResult } from "../types";
+import type {
+  Collection,
+  MarketItem,
+  ScanResult,
+  StoreOffer,
+} from "../types";
 
 /** Previous scan read straight off disk, so the grid can paint immediately. */
 export const loadCachedLibrary = () =>
@@ -17,6 +22,15 @@ export const refreshPlaytime = () => invoke<ScanResult>("refresh_playtime");
 /** Cherche un jeu a acheter, chez Steam faute d'autre catalogue public. */
 export const searchMarket = (query: string) =>
   invoke<MarketItem[]>("search_market", { query });
+
+/**
+ * Ce que le meme jeu coute ailleurs.
+ *
+ * Trois requetes de plus, dont deux lisent une page entiere : reserve a la
+ * fiche ouverte, jamais lance pour toute une liste de resultats.
+ */
+export const storeOffers = (name: string) =>
+  invoke<StoreOffer[]>("store_offers", { name });
 
 /**
  * Ouvre une page de boutique dans le navigateur.
