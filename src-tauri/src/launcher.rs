@@ -62,20 +62,37 @@ pub fn launch_uri(uri: &str) -> Result<()> {
 /// compte. Une commande qui ouvrirait l'adresse qu'on lui donne serait une
 /// passerelle vers le shell, ou `file:` et les protocoles d'installeurs sont
 /// a portee de la premiere page qui la trouverait.
-const STORE_HOSTS: [&str; 5] = [
+const STORE_HOSTS: [&str; 16] = [
     "store.steampowered.com",
     "store.epicgames.com",
     "www.ea.com",
     "store.ubisoft.com",
     "www.instant-gaming.com",
+    // Celles qu'IsThereAnyDeal renvoie : son propre lien de redirection, et
+    // les boutiques qu'il suit. Une boutique absente de cette liste garde son
+    // prix mais perd son lien — c'est le sens de `is_store_url`.
+    "isthereanydeal.com",
+    "www.gog.com",
+    "www.humblebundle.com",
+    "www.fanatical.com",
+    "www.greenmangaming.com",
+    "uk.gamesplanet.com",
+    "fr.gamesplanet.com",
+    "www.gamesplanet.com",
+    "www.gamebillet.com",
+    "www.wingamestore.com",
+    "www.indiegala.com",
 ];
 
-/// Ouvre une page de boutique, si c'en est une.
-pub fn open_store_url(url: &str) -> Result<()> {
-    let rest = url
-        .strip_prefix("https://")
-        .ok_or_else(|| anyhow!("seul https est accepte : {url}"))?;
-
+/// Cette adresse mene-t-elle a une boutique que l'on connait ?
+///
+/// Sert deux fois : avant d'ouvrir, et avant de proposer. Un lien rendu par
+/// une API tierce est verifie a l'arrivee plutot qu'au clic, pour qu'un bouton
+/// affiche ne puisse pas echouer sous le doigt.
+pub fn is_store_url(url: &str) -> bool {
+    let Some(rest) = url.strip_prefix("https://") else {
+        return false;
+    };
     // L'hote s'arrete au premier separateur ; sans cette coupe,
     // `store.steampowered.com.exemple.test` passerait pour Steam.
     let host = rest
@@ -83,9 +100,13 @@ pub fn open_store_url(url: &str) -> Result<()> {
         .next()
         .unwrap_or_default()
         .to_ascii_lowercase();
+    STORE_HOSTS.contains(&host.as_str())
+}
 
-    if !STORE_HOSTS.contains(&host.as_str()) {
-        return Err(anyhow!("boutique inconnue : {host}"));
+/// Ouvre une page de boutique, si c'en est une.
+pub fn open_store_url(url: &str) -> Result<()> {
+    if !is_store_url(url) {
+        return Err(anyhow!("boutique inconnue : {url}"));
     }
     shell_open(url)
 }

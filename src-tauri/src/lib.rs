@@ -2,7 +2,9 @@ mod artwork;
 mod binvdf;
 mod cache;
 mod collections;
+mod credentials;
 mod flags;
+mod itad;
 mod launcher;
 mod market;
 mod models;
@@ -245,10 +247,11 @@ async fn search_market(query: String) -> Result<Vec<market::MarketItem>, String>
 /// lisent une page entiere. On ne les lance que pour la fiche ouverte, pas
 /// pour chacun des douze resultats d'une recherche.
 #[tauri::command]
-async fn store_offers(name: String) -> Result<Vec<offers::StoreOffer>, String> {
+async fn store_offers(name: String, appid: u32) -> Result<offers::Offers, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let client = steam_store::client().ok_or_else(|| "client http indisponible".to_string())?;
-        Ok(offers::lookup(&client, &name))
+        let key = credentials::itad_key();
+        Ok(offers::lookup(&client, &name, appid, key.as_deref()))
     })
     .await
     .map_err(|e| format!("recherche interrompue : {e}"))?
