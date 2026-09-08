@@ -8,7 +8,8 @@ import {
   type Game,
   type MarketItem,
   type MarketPrice,
-  type StoreOffer,
+  type Offers,
+  type ShopDeal,
 } from "../types";
 import { PlatformIcon } from "./PlatformIcon";
 import { RemoteArt, Skeleton } from "./Skeleton";
@@ -218,6 +219,54 @@ function StoreButton({
   );
 }
 
+/**
+ * Une boutique que l'application ne connaissait pas.
+ *
+ * Pas de marque a montrer — il y en a une cinquantaine et elles vont et
+ * viennent — donc le nom suffit. La ligne est plus discrete que les cinq du
+ * dessus : ce sont des boutiques ou l'on achete une cle, pas un launcher
+ * installe sur la machine.
+ */
+function ShopRow({
+  deal,
+  onOpen,
+}: {
+  deal: ShopDeal;
+  onOpen: (link: StoreLink) => void;
+}) {
+  const openable = Boolean(deal.url);
+
+  return (
+    <button
+      type="button"
+      disabled={!openable}
+      onClick={() =>
+        deal.url &&
+        onOpen({
+          id: deal.shop,
+          label: deal.shop,
+          platform: null,
+          url: deal.url,
+          exact: true,
+        })
+      }
+      title={
+        openable
+          ? `Ouvrir ${deal.shop}`
+          : `${deal.shop} — lien indisponible`
+      }
+      className={`flex items-center gap-2.5 rounded-md px-3 py-1.5 text-left text-[13px] transition ${
+        openable
+          ? "text-ink-muted hover:bg-surface-2 hover:text-ink"
+          : "cursor-default text-ink-faint"
+      }`}
+    >
+      <span className="min-w-0 flex-1 truncate">{deal.shop}</span>
+      <PriceTag price={deal.price} />
+    </button>
+  );
+}
+
 function Detail({
   item,
   owned,
@@ -231,19 +280,26 @@ function Detail({
 }) {
   // null tant que la reponse n'est pas la : c'est ce qui distingue « on
   // cherche encore » de « cette boutique ne l'a pas ».
-  const [offers, setOffers] = useState<StoreOffer[] | null>(null);
+  const [offers, setOffers] = useState<Offers | null>(null);
 
   useEffect(() => {
     setOffers(null);
     let cancelled = false;
-    storeOffers(item.name)
+    storeOffers(item.name, item.appid)
       .then((found) => {
         if (!cancelled) setOffers(found);
       })
       // Un prix absent n'a rien d'un incident : la ligne redevient un simple
       // lien de recherche, et l'utilisateur n'a pas a etre averti.
       .catch(() => {
-        if (!cancelled) setOffers([]);
+        if (!cancelled) {
+          setOffers({
+            stores: [],
+            elsewhere: [],
+            historyLow: null,
+            aggregated: false,
+          });
+        }
       });
     return () => {
       cancelled = true;
@@ -334,9 +390,13 @@ function Detail({
           {/* Steam donne son prix avec la fiche ; Epic, Ubisoft et Instant
               Gaming sont interroges a l'ouverture. EA ne publie rien. */}
           {storeLinks(item).map((link) => {
-            const offer = offers?.find((entry) => entry.store === link.id);
+            const offer = offers?.stores.find((entry) => entry.store === link.id);
             const price =
-              link.id === "steam" ? (item.free ? null : item.price) : (offer?.price ?? null);
+              link.id === "steam"
+                ? item.free
+                  ? null
+                  : item.price
+                : (offer?.price ?? null);
 
             return (
               <StoreButton
@@ -345,18 +405,43 @@ function Detail({
                 // prefere alors a sa recherche.
                 link={offer?.url ? { ...link, url: offer.url } : link}
                 price={price}
-                loading={link.id !== "steam" && offers === null && link.id !== "ea"}
+                loading={link.id !== "steam" && offers === null}
                 exact={link.exact || Boolean(offer?.url)}
                 onOpen={onOpen}
               />
             );
           })}
 
-          {/* Dit une fois, en bas, plutot que sur chaque ligne muette. */}
-          <p className="pt-1 text-[11px] leading-snug text-ink-faint">
-            EA ne publie aucun prix hors de son application : sa ligne mène à
-            une recherche.
-          </p>
+          {/* Sans comparateur, EA n'a aucune source publique. Dit une fois, en
+              bas, plutot que sur une ligne muette qu'on prendrait pour un
+              chargement qui n'aboutit pas. */}
+          {offers !== null &&
+            !offers.stores.some((entry) => entry.store === "ea") && (
+              <p className="pt-1 text-[11px] leading-snug text-ink-faint">
+                {offers.aggregated
+                  ? "Aucun prix EA pour ce titre : sa ligne mène à une recherche."
+                  : "EA ne publie aucun prix hors de son application : sa ligne mène à une recherche."}
+              </p>
+            )}
+
+          {offers !== null && offers.elsewhere.length > 0 && (
+            <div className="flex flex-col gap-2 pt-2">
+              <span className="text-[10px] tracking-widest text-ink-faint uppercase">
+                Ailleurs
+              </span>
+              {/* La moins chere en tete : c'est la seule raison de lire cette
+                  liste. */}
+              {offers.elsewhere.slice(0, 8).map((deal) => (
+                <ShopRow key={deal.shop} deal={deal} onOpen={onOpen} />
+              ))}
+            </div>
+          )}
+
+          {offers?.historyLow && (
+            <p className="text-[11px] text-ink-faint">
+              Plus bas historique : {offers.historyLow}
+            </p>
+          )}
         </div>
       </div>
     </aside>

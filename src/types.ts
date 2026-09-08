@@ -122,6 +122,24 @@ export interface StoreOffer {
   url: string | null;
 }
 
+/** Une boutique que l'application ne nomme pas d'elle-meme. */
+export interface ShopDeal {
+  /** Le nom que la boutique porte chez IsThereAnyDeal. */
+  shop: string;
+  price: MarketPrice;
+  url: string | null;
+}
+
+export interface Offers {
+  /** Les cinq boutiques que la fiche nomme. */
+  stores: StoreOffer[];
+  /** Les autres : GOG, Fanatical, Humble… la moins chere en tete. */
+  elsewhere: ShopDeal[];
+  historyLow: string | null;
+  /** Vrai quand le comparateur a repondu. */
+  aggregated: boolean;
+}
+
 export type SortKey = "name" | "lastPlayed" | "playtime" | "size";
 
 export const SORT_LABELS: Record<SortKey, string> = {
