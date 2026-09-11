@@ -3,6 +3,7 @@ import type {
   Collection,
   Game,
   InstallFilter,
+  Platform,
   Selection,
   SortKey,
 } from "../types";
@@ -16,6 +17,8 @@ import type {
  */
 export interface View {
   installFilter: InstallFilter;
+  /** Une seule boutique, ou toutes. Orthogonal a la selection. */
+  platform: Platform | null;
   selection: Selection;
   collections: Collection[];
   query: string;
@@ -39,6 +42,10 @@ export function inInstallFilter(game: Game, filter: InstallFilter): boolean {
   return filter === "all" ? true : game.installed === (filter === "installed");
 }
 
+export function inPlatform(game: Game, platform: Platform | null): boolean {
+  return platform === null || game.platform === platform;
+}
+
 export function inSelection(
   game: Game,
   selection: Selection,
@@ -50,8 +57,6 @@ export function inSelection(
     // The hidden view is already the whole universe by this point.
     case "hidden":
       return true;
-    case "platform":
-      return game.platform === selection.platform;
     case "collection": {
       const list = collections.find((entry) => entry.id === selection.id);
       return list?.gameIds.includes(game.id) ?? false;
@@ -91,11 +96,12 @@ export function compareGames(a: Game, b: Game, sort: SortKey): number {
  */
 export function inScope(
   game: Game,
-  view: Pick<View, "installFilter" | "selection" | "collections">,
+  view: Pick<View, "installFilter" | "platform" | "selection" | "collections">,
 ): boolean {
   return (
     inUniverse(game, view.selection) &&
     inInstallFilter(game, view.installFilter) &&
+    inPlatform(game, view.platform) &&
     inSelection(game, view.selection, view.collections)
   );
 }
@@ -157,6 +163,7 @@ export function selectGames(games: Game[], view: View): Game[] {
   const visible = universe(games, view.selection).filter(
     (game) =>
       inInstallFilter(game, view.installFilter) &&
+      inPlatform(game, view.platform) &&
       inSelection(game, view.selection, view.collections) &&
       matchesQuery(game, view.query),
   );

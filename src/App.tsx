@@ -30,7 +30,9 @@ import {
 } from "./lib/api";
 import {
   inInstallFilter,
+  inPlatform,
   inScope,
+  inSelection,
   installCounts,
   selectGames,
   universe,
@@ -38,10 +40,12 @@ import {
 import { SPLASH_EVENT, type SplashState, type SplashStep } from "./lib/splash";
 import {
   INSTALL_FILTER_LABELS,
+  PLATFORMS,
   PLATFORM_LABELS,
   type Collection,
   type Game,
   type InstallFilter,
+  type Platform,
   type Selection,
   type SortKey,
 } from "./types";
@@ -87,6 +91,11 @@ export default function App() {
   const [sort, setSort] = useState<SortKey>("name");
   const [installFilter, setInstallFilter] =
     useState<InstallFilter>("installed");
+  /* La boutique d'origine est une facette, pas un ensemble : on la choisit
+     au-dessus de la grille et elle se combine avec le reste — les favoris
+     Steam, les jeux Epic d'une liste. En faire une ligne de la barre laterale
+     interdisait ces croisements. */
+  const [platform, setPlatform] = useState<Platform | null>(null);
   const [selection, setSelection] = useState<Selection>({ kind: "all" });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
@@ -173,32 +182,59 @@ export default function App() {
     [allGames],
   );
   const counts = useMemo(() => installCounts(allGames), [allGames]);
+
+  /** Ce que chaque boutique apporte a l'ensemble courant, la facette
+      plateforme mise de cote : un bouton doit annoncer ce qu'il donnerait. */
+  const platformCounts = useMemo(() => {
+    const tally = Object.fromEntries(
+      PLATFORMS.map((entry) => [entry, 0]),
+    ) as Record<Platform, number>;
+    for (const game of universe(allGames, selection)) {
+      if (
+        inInstallFilter(game, installFilter) &&
+        inSelection(game, selection, collections.collections)
+      ) {
+        tally[game.platform] += 1;
+      }
+    }
+    return tally;
+  }, [allGames, selection, installFilter, collections.collections]);
   const unhidden = useMemo(
     () => universe(allGames, { kind: "all" }),
     [allGames],
   );
 
-  /** What the sidebar groups and counts over: the universe minus the install
-      filter, but before any selection — a platform row has to keep its count
-      whichever platform is currently selected. */
+  /** Ce que la barre laterale compte : l'univers reduit au filtre
+      d'installation et a la boutique choisie, pour que ses totaux disent la
+      meme chose que la grille. */
   const scoped = useMemo(
     () =>
-      universe(allGames, selection).filter((game) =>
-        inInstallFilter(game, installFilter),
+      universe(allGames, selection).filter(
+        (game) =>
+          inInstallFilter(game, installFilter) && inPlatform(game, platform),
       ),
-    [allGames, selection, installFilter],
+    [allGames, selection, installFilter, platform],
   );
 
   const visible = useMemo(
     () =>
       selectGames(allGames, {
         installFilter,
+        platform,
         selection,
         collections: collections.collections,
         query,
         sort,
       }),
-    [allGames, installFilter, selection, collections.collections, query, sort],
+    [
+      allGames,
+      installFilter,
+      platform,
+      selection,
+      collections.collections,
+      query,
+      sort,
+    ],
   );
 
   /* Cherche d'abord dans la vue : c'est la que les exemplaires d'un meme jeu
@@ -221,13 +257,14 @@ export default function App() {
     if (
       !inScope(selected, {
         installFilter,
+        platform,
         selection,
         collections: collections.collections,
       })
     ) {
       setSelectedId(null);
     }
-  }, [selected, installFilter, selection, collections.collections]);
+  }, [selected, installFilter, platform, selection, collections.collections]);
 
   useEffect(() => {
     if (!toast) return;
@@ -374,12 +411,14 @@ export default function App() {
         if (
           !inScope(game, {
             installFilter,
+            platform,
             selection,
             collections: collections.collections,
           })
         ) {
           setSelection({ kind: "all" });
           setInstallFilter("all");
+          setPlatform(null);
         }
         setSelectedId(game.id);
       },
@@ -475,22 +514,25 @@ export default function App() {
   };
 
   const scopeLabel = useMemo(() => {
-    switch (selection.kind) {
-      case "favorites":
-        return "favoris";
-      case "hidden":
-        return "masqués";
-      case "platform":
-        return PLATFORM_LABELS[selection.platform];
-      case "collection":
-        return (
-          collections.collections.find((entry) => entry.id === selection.id)
-            ?.name ?? "Liste"
-        );
-      default:
-        return INSTALL_FILTER_LABELS[installFilter].toLowerCase();
-    }
-  }, [selection, collections.collections, installFilter]);
+    const set = (() => {
+      switch (selection.kind) {
+        case "favorites":
+          return "favoris";
+        case "hidden":
+          return "masqués";
+        case "collection":
+          return (
+            collections.collections.find((entry) => entry.id === selection.id)
+              ?.name ?? "Liste"
+          );
+        default:
+          return INSTALL_FILTER_LABELS[installFilter].toLowerCase();
+      }
+    })();
+    // La plateforme s'ajoute au lieu de remplacer : c'est bien une facette
+    // par-dessus l'ensemble choisi.
+    return platform ? `${set} · ${PLATFORM_LABELS[platform]}` : set;
+  }, [selection, collections.collections, installFilter, platform]);
 
   /** Toute navigation dans la bibliotheque ramene de la boutique. */
   const selectSection = (next: Selection) => {
@@ -601,6 +643,9 @@ export default function App() {
               installFilter={installFilter}
               onInstallFilterChange={setInstallFilter}
               installCounts={counts}
+              platform={platform}
+              onPlatformChange={setPlatform}
+              platformCounts={platformCounts}
               sort={sort}
               onSortChange={setSort}
             />
