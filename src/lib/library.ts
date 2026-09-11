@@ -101,15 +101,71 @@ export function inScope(
 }
 
 /** Everything above, in the order that matters. Never mutates its input. */
+/**
+ * Le titre, reduit a ce qui permet de reconnaitre le meme jeu ailleurs.
+ *
+ * Plus strict que `normalize`, qui sert a la recherche : ici la ponctuation
+ * part aussi, parce que deux boutiques ecrivent rarement un titre exactement
+ * pareil.
+ */
+export function titleKey(name: string): string {
+  return normalize(name).replace(/[^a-z0-9]/g, "");
+}
+
+/**
+ * Lequel des exemplaires porte la carte.
+ *
+ * Celui qui est installe, sinon le plus recemment joue : c'est celui qu'on
+ * veut lancer, et celui dont la jaquette est deja sur le disque.
+ */
+function primaryFirst(a: Game, b: Game): number {
+  if (a.installed !== b.installed) return a.installed ? -1 : 1;
+  const played = (b.lastPlayed ?? 0) - (a.lastPlayed ?? 0);
+  if (played !== 0) return played;
+  return a.id.localeCompare(b.id);
+}
+
+/**
+ * Un meme jeu possede sur deux boutiques ne fait qu'une carte.
+ *
+ * Steam et Epic offrent les memes jeux assez souvent pour qu'une bibliotheque
+ * finisse avec des paires — quatre ici — qui n'apprennent rien et occupent la
+ * place de quatre autres. L'egalite du titre est exigee, une fois reduit a ses
+ * lettres et ses chiffres : replier deux jeux differents serait bien pire que
+ * de laisser une paire.
+ *
+ * Rien n'est perdu : l'exemplaire ecarte voyage avec celui qui reste, qui sait
+ * donc sur quelles boutiques le jeu est aussi disponible.
+ */
+export function collapseDuplicates(games: Game[]): Game[] {
+  const groups = new Map<string, Game[]>();
+  for (const game of games) {
+    const key = titleKey(game.name);
+    const group = groups.get(key);
+    if (group) group.push(game);
+    else groups.set(key, [game]);
+  }
+
+  return [...groups.values()].map((group) => {
+    if (group.length === 1) return group[0];
+    const [primary, ...rest] = [...group].sort(primaryFirst);
+    return { ...primary, duplicates: rest };
+  });
+}
+
 export function selectGames(games: Game[], view: View): Game[] {
-  return universe(games, view.selection)
-    .filter(
-      (game) =>
-        inInstallFilter(game, view.installFilter) &&
-        inSelection(game, view.selection, view.collections) &&
-        matchesQuery(game, view.query),
-    )
-    .sort((a, b) => compareGames(a, b, view.sort));
+  const visible = universe(games, view.selection).filter(
+    (game) =>
+      inInstallFilter(game, view.installFilter) &&
+      inSelection(game, view.selection, view.collections) &&
+      matchesQuery(game, view.query),
+  );
+
+  // Le repliage vient apres le filtrage : une paire dont un exemplaire est
+  // masque ou hors filtre n'est plus une paire, et l'autre reste seul.
+  return collapseDuplicates(visible).sort((a, b) =>
+    compareGames(a, b, view.sort),
+  );
 }
 
 export interface InstallCounts {
