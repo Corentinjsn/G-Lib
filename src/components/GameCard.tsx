@@ -102,6 +102,12 @@ export function GameCard({
       <div className="absolute top-1.5 left-1.5 flex items-center gap-1">
         <PlatformBadge platform={game.platform} />
 
+        {/* Le meme jeu possede ailleurs : une carte, deux marques. Sans elles
+            la fusion serait invisible, et on chercherait la carte manquante. */}
+        {game.duplicates?.map((other) => (
+          <PlatformBadge key={other.id} platform={other.platform} />
+        ))}
+
         {game.needsUpdate && (
           <span
             title="Mise à jour en attente"

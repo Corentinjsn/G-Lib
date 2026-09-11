@@ -201,9 +201,16 @@ export default function App() {
     [allGames, installFilter, selection, collections.collections, query, sort],
   );
 
+  /* Cherche d'abord dans la vue : c'est la que les exemplaires d'un meme jeu
+     ont ete replies en une seule entree, qui sait sur quelles autres boutiques
+     il se trouve. Le repli sur la bibliotheque entiere sert aux jeux qu'on
+     ouvre depuis la palette, hors du perimetre courant. */
   const selected = useMemo(
-    () => allGames.find((game) => game.id === selectedId) ?? null,
-    [allGames, selectedId],
+    () =>
+      visible.find((game) => game.id === selectedId) ??
+      allGames.find((game) => game.id === selectedId) ??
+      null,
+    [visible, allGames, selectedId],
   );
   /* Le panneau de detail decrit un jeu de la grille. Quand ce jeu sort du
      perimetre courant — autre categorie, autre plateforme, autre filtre
@@ -621,6 +628,7 @@ export default function App() {
               game={selected}
               onClose={() => setSelectedId(null)}
               onLaunch={() => handleLaunch(selected)}
+              onLaunchOther={handleLaunch}
               onOpenFolder={() => handleOpenFolder(selected)}
               onToggleFavorite={() =>
                 void toggleFlag(selected, "favorite", !selected.favorite)

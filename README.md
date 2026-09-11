@@ -63,6 +63,24 @@ L'appartenance est stockée sur la liste (`collections.json`), pas sur le jeu :
 chaque analyse reconstruit la bibliothèque depuis les launchers, donc tout ce
 qui serait porté par un `Game` disparaîtrait avec elle.
 
+### Un jeu, une carte
+
+Steam et Epic offrent les mêmes jeux assez souvent pour qu'une bibliothèque
+finisse avec des paires — quatre sur celle-ci : FragPunk, Splitgate, The
+Escapists 2, Destiny 2. Elles n'apprennent rien et occupent la place de quatre
+autres cartes.
+
+Les exemplaires d'un même titre sont donc repliés en une seule carte, qui porte
+les marques des deux boutiques ; le panneau de détail permet de lancer depuis
+l'une ou l'autre. L'égalité du titre est exigée, une fois réduit à ses lettres
+et ses chiffres : replier deux jeux différents serait bien pire que de laisser
+une paire.
+
+Le repliage est une affaire de vue, pas de données : la bibliothèque reste une
+liste d'entrées, une par boutique, et les favoris, les listes et les raccourcis
+continuent de désigner une entrée précise. Il vient aussi après le filtrage —
+une paire dont un exemplaire est masqué ou hors filtre n'est plus une paire.
+
 ### Historique de jeu
 
 Aucune boutique n'expose localement le temps de jeu, et seule Steam donne une

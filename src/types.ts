@@ -27,6 +27,15 @@ export interface Game {
   coverUrls: string[];
   /** Launches the game, or installs it. The backend decides which. */
   actionUri: string;
+  /**
+   * Les autres exemplaires du meme jeu, sur d'autres boutiques.
+   *
+   * Pose par l'interface, jamais par le backend : la bibliotheque reste une
+   * liste plate d'entrees, une par boutique, et c'est la vue qui les replie
+   * en une seule carte. Les marques, les listes et les raccourcis continuent
+   * donc de designer une entree precise par son id.
+   */
+  duplicates?: Game[];
 }
 
 export interface ScanError {

@@ -1,6 +1,6 @@
 import { coverUrl } from "../lib/api";
 import { formatLastPlayed, formatPlaytime, formatSize } from "../lib/format";
-import { type Game } from "../types";
+import { PLATFORM_LABELS, type Game } from "../types";
 import { Kbd } from "./Kbd";
 import { PlatformBadge } from "./PlatformBadge";
 
@@ -8,6 +8,8 @@ interface Props {
   game: Game;
   onClose: () => void;
   onLaunch: () => void;
+  /** Lance l'exemplaire d'une autre boutique. */
+  onLaunchOther: (other: Game) => void;
   onOpenFolder: () => void;
   onToggleFavorite: () => void;
 }
@@ -29,6 +31,7 @@ export function GameDetail({
   game,
   onClose,
   onLaunch,
+  onLaunchOther,
   onOpenFolder,
   onToggleFavorite,
 }: Props) {
@@ -107,6 +110,36 @@ export function GameDetail({
             </button>
           )}
         </div>
+
+        {/* La carte en replie plusieurs : le detail dit lesquelles, et permet
+            de lancer depuis l'autre boutique — celle qui a la version a jour,
+            ou simplement celle qu'on prefere. */}
+        {game.duplicates && game.duplicates.length > 0 && (
+          <div className="flex flex-col gap-2 border-t border-line pt-4">
+            <span className="text-[10px] tracking-widest text-ink-faint uppercase">
+              Aussi sur
+            </span>
+            {game.duplicates.map((other) => (
+              <button
+                key={other.id}
+                type="button"
+                onClick={() => onLaunchOther(other)}
+                title={`${other.installed ? "Jouer" : "Installer"} — ${
+                  PLATFORM_LABELS[other.platform]
+                }`}
+                className="flex items-center gap-2.5 rounded-md border border-line bg-surface-2 px-3 py-2 text-left text-sm text-ink-muted transition hover:border-accent hover:text-ink"
+              >
+                <PlatformBadge platform={other.platform} />
+                <span className="min-w-0 flex-1 truncate">
+                  {PLATFORM_LABELS[other.platform]}
+                </span>
+                <span className="shrink-0 text-[10px] text-ink-faint">
+                  {other.installed ? "installé" : "à installer"}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="flex flex-col gap-3 border-t border-line pt-4">
           <Field
