@@ -1,6 +1,5 @@
 import { useState, type MouseEvent } from "react";
 import {
-  PLATFORMS,
   PLATFORM_COLORS,
   PLATFORM_LABELS,
   selectionKey,
@@ -201,8 +200,6 @@ export function Sidebar({
   // Rien n'est actif dans la bibliotheque tant que la boutique est ouverte :
   // les lignes ci-dessous decrivent une grille qui n'est pas a l'ecran.
   const active = market ? "" : selectionKey(selection);
-  const byPlatform = (platform: Game["platform"]) =>
-    games.filter((game) => game.platform === platform);
   const inCollection = (collection: Collection) =>
     games.filter((game) => collection.gameIds.includes(game.id));
 
@@ -319,32 +316,11 @@ export function Sidebar({
           })
         )}
 
-        <SectionLabel>Plateformes</SectionLabel>
-
-        {PLATFORMS.map((platform) => {
-          const key = `platform:${platform}`;
-          const list = byPlatform(platform);
-          if (list.length === 0) return null;
-          return (
-            <div key={platform}>
-              <GroupRow
-                // Nommée ici, contrairement aux badges de la grille : une
-                // barre de navigation se lit ligne à ligne, et le nom écrit
-                // vaut mieux qu'un logo à deviner.
-                label={PLATFORM_LABELS[platform]}
-                count={String(list.length)}
-                active={active === key}
-                expanded={expanded.has(key)}
-                onToggle={() => toggle(key)}
-                onSelect={() =>
-                  onSelectionChange({ kind: "platform", platform })
-                }
-                icon={platform}
-              />
-              {expanded.has(key) && gameRows(list)}
-            </div>
-          );
-        })}
+        {/* Les plateformes avaient leur section ici. Elles sont parties au-
+            dessus de la grille : une boutique d'origine est une facette, pas
+            un ensemble, et la voir ici interdisait de croiser « mes favoris »
+            avec « chez Steam ». Ne reste donc que la navigation par
+            ensembles. */}
       </nav>
 
       <div className="flex flex-col gap-3 border-t border-line p-4">

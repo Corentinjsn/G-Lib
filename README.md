@@ -51,9 +51,16 @@ fenêtre.
 
 ### Navigation et listes
 
-La barre latérale est une navigation à la Steam : « Tous les jeux », vos listes,
-puis un groupe par plateforme. Chaque groupe se déplie pour révéler ses jeux par
-nom ; cliquer sur l'un d'eux ouvre sa fiche sans changer le filtre.
+La barre latérale ne porte que des **ensembles** : « Tous les jeux », les
+favoris, les masqués, vos listes. Chaque liste se déplie pour révéler ses jeux
+par nom ; cliquer sur l'un d'eux ouvre sa fiche sans changer le filtre.
+
+La boutique d'origine, elle, est une **facette** et non un ensemble : elle vit
+au-dessus de la grille, à côté du filtre d'installation, sous forme de quatre
+marques. Elle se combine avec le reste — les favoris chez Steam, les jeux Epic
+d'une liste — ce qu'une ligne de barre latérale interdisait, puisqu'elle
+remplaçait l'ensemble choisi au lieu de s'y ajouter. Un second clic sur la même
+marque revient à toutes.
 
 Les listes sont libres et un jeu peut appartenir à plusieurs d'entre elles. On
 les remplit au clic droit sur un jeu — les listes s'y affichent en cases à
@@ -133,7 +140,7 @@ restent le repli, pour une clé absente, une boutique qu'il ne suit pas, ou un
 jeu qu'il ne connaît pas encore. Il ne suit pas Instant Gaming, dont le lecteur
 reste donc nécessaire.
 
-Sa clé vit hors du dépôt, dans `%USERPROFILE%.gamlibitad.key`, à côté de
+Sa clé vit hors du dépôt, dans `%USERPROFILE%\.gamlib\itad.key`, à côté de
 celle de l'updater. Son absence n'est pas une erreur : l'application se
 contente alors des trois sources écrites à la main.
 
