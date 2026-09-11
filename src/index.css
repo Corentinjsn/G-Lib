@@ -75,7 +75,8 @@
 .logo-card-right,
 .logo-card-front {
   transform-box: view-box;
-  transform-origin: 75px 96px;
+  /* The same pivot as the marks themselves, in components/LogoMark. */
+  transform-origin: 75px 142px;
 }
 
 .logo-card-left {
@@ -96,7 +97,7 @@
     transform: rotate(0deg);
   }
   50% {
-    transform: rotate(-11deg);
+    transform: rotate(-6deg);
   }
 }
 
@@ -106,7 +107,7 @@
     transform: rotate(0deg);
   }
   50% {
-    transform: rotate(11deg);
+    transform: rotate(6deg);
   }
 }
 
