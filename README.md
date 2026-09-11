@@ -1,4 +1,4 @@
-# GAMLIB
+# G-Lib
 
 Une bibliothèque de jeux unique pour Steam, Epic Games, EA et Ubisoft Connect.
 Affiche les jeux **installés** comme ceux que vous **possédez sans les avoir
@@ -91,7 +91,7 @@ une paire dont un exemplaire est masqué ou hors filtre n'est plus une paire.
 ### Historique de jeu
 
 Aucune boutique n'expose localement le temps de jeu, et seule Steam donne une
-date de dernière session. GAMLIB tient donc le sien : chaque jeu installé a un
+date de dernière session. G-Lib tient donc le sien : chaque jeu installé a un
 dossier, donc un processus dont l'exécutable est sous ce dossier *est* ce jeu
 qui tourne. La méthode vaut pour les quatre plateformes, sans authentification,
 et donne la dernière session comme le temps cumulé. Steam reste la référence
@@ -201,6 +201,21 @@ Trois sources, aucune ne demandant de clé d'API ni de compte :
 
 Un launcher absent ou cassé n'empêche jamais les autres d'être scannés :
 l'erreur est remontée dans la barre latérale, pas propagée.
+
+### Le nom et la marque
+
+L'application s'appelle **G-Lib**. Son identifiant reste `com.janso.gamlib` :
+c'est lui qui désigne le dossier de données et qui fait le lien entre deux
+versions pour l'updater, donc le renommer aurait coupé la mise à jour et perdu
+les favoris, les listes et le cache. Même chose pour `%USERPROFILE%\.gamlib\`,
+où vivent les clés.
+
+La marque est dessinée en SVG plutôt que chargée depuis le PNG : les trois
+cartes doivent pouvoir bouger séparément pendant une mise à jour. Elles ont
+toutes **la même taille** — c'est un jeu de cartes, pas trois formes
+différentes — et seul le rayon des coins distingue celle du dessus, arrondie
+jusqu'au stade. Le dessin existe en deux exemplaires, `components/LogoMark` et
+celui écrit en clair dans `splash.html` : ils doivent changer ensemble.
 
 ## Développement
 

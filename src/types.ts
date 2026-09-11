@@ -12,7 +12,7 @@ export interface Game {
   installDir: string | null;
   sizeOnDisk: number | null;
   lastPlayed: number | null;
-  /** Seconds played, as measured by GAMLIB itself. */
+  /** Seconds played, as measured by G-Lib itself. */
   playtimeSeconds: number | null;
   /** The launcher reports a pending update for this installed game. */
   needsUpdate: boolean;

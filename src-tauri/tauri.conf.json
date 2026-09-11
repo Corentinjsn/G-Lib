@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Gamlib",
-  "version": "0.12.0",
+  "productName": "G-Lib",
+  "version": "0.13.0",
   "identifier": "com.janso.gamlib",
   "build": {
     "beforeDevCommand": "bun run dev",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Gamlib",
+        "title": "G-Lib",
         "decorations": false,
         "visible": false,
         "width": 1280,
@@ -26,7 +26,7 @@
       {
         "label": "splash",
         "url": "splash.html",
-        "title": "Gamlib",
+        "title": "G-Lib",
         "decorations": false,
         "resizable": false,
         "center": true,
