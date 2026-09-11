@@ -1,10 +1,5 @@
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
-import type {
-  Collection,
-  MarketItem,
-  ScanResult,
-  StoreOffer,
-} from "../types";
+import type { Collection, MarketItem, Offers, ScanResult } from "../types";
 
 /** Previous scan read straight off disk, so the grid can paint immediately. */
 export const loadCachedLibrary = () =>
@@ -26,11 +21,12 @@ export const searchMarket = (query: string) =>
 /**
  * Ce que le meme jeu coute ailleurs.
  *
- * Trois requetes de plus, dont deux lisent une page entiere : reserve a la
- * fiche ouverte, jamais lance pour toute une liste de resultats.
+ * Quatre requetes de plus, dont deux lisent une page entiere : reserve a la
+ * fiche ouverte, jamais lance pour toute une liste de resultats. L'appid sert
+ * au comparateur, qui n'a alors aucun titre a deviner.
  */
-export const storeOffers = (name: string) =>
-  invoke<StoreOffer[]>("store_offers", { name });
+export const storeOffers = (name: string, appid: number) =>
+  invoke<Offers>("store_offers", { name, appid });
 
 /**
  * Ouvre une page de boutique dans le navigateur.
