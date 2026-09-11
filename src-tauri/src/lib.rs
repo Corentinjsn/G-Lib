@@ -5,6 +5,7 @@ mod collections;
 mod credentials;
 mod flags;
 mod itad;
+mod igdb;
 mod launcher;
 mod market;
 mod models;
@@ -245,9 +246,11 @@ fn set_collection_membership(
 /// Cherche un jeu a acheter. Le reseau, donc hors du fil de l'interface.
 #[tauri::command]
 async fn search_market(query: String) -> Result<Vec<market::MarketItem>, String> {
-    tauri::async_runtime::spawn_blocking(move || market::search(&query))
-        .await
-        .map_err(|e| format!("recherche interrompue : {e}"))?
+    tauri::async_runtime::spawn_blocking(move || {
+        market::search(&query, credentials::igdb().as_ref())
+    })
+    .await
+    .map_err(|e| format!("recherche interrompue : {e}"))?
 }
 
 /// Ce que le meme jeu coute chez Epic, Ubisoft et Instant Gaming.
@@ -256,7 +259,7 @@ async fn search_market(query: String) -> Result<Vec<market::MarketItem>, String>
 /// lisent une page entiere. On ne les lance que pour la fiche ouverte, pas
 /// pour chacun des douze resultats d'une recherche.
 #[tauri::command]
-async fn store_offers(name: String, appid: u32) -> Result<offers::Offers, String> {
+async fn store_offers(name: String, appid: Option<u32>) -> Result<offers::Offers, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let client = steam_store::client().ok_or_else(|| "client http indisponible".to_string())?;
         let key = credentials::itad_key();
