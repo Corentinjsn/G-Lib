@@ -24,6 +24,7 @@
 //! Ubisoft laisse Epic et Instant Gaming intacts, et la fiche montre
 //! simplement un lien de recherche la ou le prix manque.
 
+use crate::itad::{self, ShopDeal};
 use crate::market::Price;
 use crate::steam_store::percent_encode;
 use serde::Serialize;
@@ -41,6 +42,31 @@ pub struct StoreOffer {
     /// Page du jeu, quand la boutique l'a nommee. Sinon l'interface garde son
     /// lien de recherche.
     pub url: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Offers {
+    /// Les cinq boutiques que la fiche nomme deja.
+    pub stores: Vec<StoreOffer>,
+    /// Les autres, celles qu'on ne connaissait pas : GOG, Fanatical, Humble…
+    pub elsewhere: Vec<ShopDeal>,
+    pub history_low: Option<String>,
+    /// Vrai quand la cle ITAD a repondu. L'interface s'en sert pour dire
+    /// pourquoi une ligne reste vide plutot que de laisser croire a une panne.
+    pub aggregated: bool,
+}
+
+/// Le nom d'une boutique chez ITAD, ramene a nos cinq quand c'en est une.
+fn our_store(shop: &str) -> Option<&'static str> {
+    match key(shop).as_str() {
+        "steam" => Some("steam"),
+        "epicgamestore" | "epicgamesstore" | "epicgames" | "epic" => Some("epic"),
+        "ubisoftstore" | "ubisoftconnect" | "uplay" | "ubisoft" => Some("ubisoft"),
+        "eaapp" | "eastore" | "origin" | "ea" => Some("ea"),
+        "instantgaming" => Some("instant-gaming"),
+        _ => None,
+    }
 }
 
 /// Le titre, reduit a ce qui permet de le reconnaitre ailleurs.
@@ -149,9 +175,11 @@ fn best(wanted: &str, found: Vec<(String, Price, Option<String>)>) -> Option<(Pr
 
 fn epic(client: &reqwest::blocking::Client, title: &str) -> Option<(Price, Option<String>)> {
     let query = "query q($country:String!,$keywords:String,$locale:String,$count:Int){Catalog{searchStore(country:$country,keywords:$keywords,locale:$locale,count:$count){elements{title productSlug offerType price(country:$country){totalPrice{discountPrice originalPrice fmtPrice(locale:$locale){originalPrice discountPrice}}}}}}}";
+    // Le titre part dans un litteral JSON ecrit a la main : les deux
+    // caracteres qui pourraient en sortir n'y entrent pas.
     let variables = format!(
         r#"{{"country":"FR","keywords":"{}","locale":"fr-FR","count":20}}"#,
-        title.replace('\\', "").replace('"', "")
+        title.replace(['\\', '"'], "")
     );
     let url = format!(
         "{EPIC_GRAPHQL}?query={}&variables={}",
@@ -389,33 +417,80 @@ fn ubisoft(client: &reqwest::blocking::Client, title: &str) -> Option<(Price, Op
     best(title, found)
 }
 
-/// Ce que le meme jeu coute ailleurs. Les trois requetes partent ensemble.
-pub fn lookup(client: &reqwest::blocking::Client, title: &str) -> Vec<StoreOffer> {
-    let (epic_offer, ig_offer, ubi_offer) = std::thread::scope(|scope| {
+/// Ce que le meme jeu coute ailleurs. Toutes les requetes partent ensemble.
+///
+/// ITAD repond pour une cinquantaine de boutiques et n'a pas de titre a
+/// deviner : quand il repond, sa valeur l'emporte. Les trois sources ecrites a
+/// la main restent le repli — pour une cle absente, une boutique qu'il ne
+/// suit pas, ou un jeu qu'il ne connait pas encore.
+pub fn lookup(
+    client: &reqwest::blocking::Client,
+    title: &str,
+    appid: u32,
+    itad_key: Option<&str>,
+) -> Offers {
+    let (epic_offer, ig_offer, ubi_offer, aggregate) = std::thread::scope(|scope| {
         let a = scope.spawn(|| epic(client, title));
         let b = scope.spawn(|| instant_gaming(client, title));
         let c = scope.spawn(|| ubisoft(client, title));
+        let d = scope.spawn(|| itad_key.and_then(|key| itad::deals(client, key, appid)));
         (
             a.join().unwrap_or(None),
             b.join().unwrap_or(None),
             c.join().unwrap_or(None),
+            d.join().unwrap_or(None),
         )
     });
 
-    [
+    let scraped = [
         ("epic", epic_offer),
         ("instant-gaming", ig_offer),
         ("ubisoft", ubi_offer),
-    ]
-    .into_iter()
-    .filter_map(|(store, offer)| {
-        offer.map(|(price, url)| StoreOffer {
-            store: store.to_string(),
-            price: Some(price),
-            url,
-        })
-    })
-    .collect()
+    ];
+
+    let mut stores: Vec<StoreOffer> = Vec::new();
+    let mut elsewhere: Vec<ShopDeal> = Vec::new();
+
+    for deal in aggregate.as_ref().map(|d| d.shops.clone()).unwrap_or_default() {
+        match our_store(&deal.shop) {
+            // Steam donne son prix avec la fiche ; le repeter ici ne ferait
+            // que risquer deux montants qui se contredisent.
+            Some("steam") => {}
+            Some(store) => stores.push(StoreOffer {
+                store: store.to_string(),
+                price: Some(deal.price),
+                url: deal.url,
+            }),
+            None => elsewhere.push(deal),
+        }
+    }
+
+    for (store, offer) in scraped {
+        if stores.iter().any(|known| known.store == store) {
+            continue;
+        }
+        if let Some((price, url)) = offer {
+            stores.push(StoreOffer {
+                store: store.to_string(),
+                price: Some(price),
+                url,
+            });
+        }
+    }
+
+    // La moins chere en tete : c'est la seule raison de lire cette liste.
+    elsewhere.sort_by(|a, b| {
+        let left = amount(&a.price.current).unwrap_or(f64::MAX);
+        let right = amount(&b.price.current).unwrap_or(f64::MAX);
+        left.total_cmp(&right)
+    });
+
+    Offers {
+        stores,
+        elsewhere,
+        history_low: aggregate.as_ref().and_then(|d| d.history_low.clone()),
+        aggregated: aggregate.is_some(),
+    }
 }
 
 #[cfg(test)]
