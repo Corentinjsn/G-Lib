@@ -55,7 +55,7 @@ if (-not $signature) {
 
 # L'URL doit pointer sur l'asset de la release qui sera creee pour ce tag.
 $tag = "v$version"
-$url = "https://github.com/Corentinjsn/GAMLIB/releases/download/$tag/$($installer.Name)"
+$url = "https://github.com/Corentinjsn/G-Lib/releases/download/$tag/$($installer.Name)"
 
 $latest = [ordered]@{
   version   = $version
