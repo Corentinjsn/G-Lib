@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import {
+  collapseDuplicates,
   inScope,
   installCounts,
   paletteRank,
   searchPalette,
   selectGames,
+  titleKey,
   universe,
 } from "./library";
 import type { Collection, Game } from "../types";
@@ -216,5 +218,57 @@ describe("inScope", () => {
     });
     expect(inScope(hades, scoped)).toBe(true);
     expect(inScope(eldenRing, scoped)).toBe(false);
+  });
+});
+
+describe("collapseDuplicates", () => {
+  const steamCopy = game({
+    id: "steam:10",
+    name: "FragPunk",
+    installed: true,
+    lastPlayed: 100,
+  });
+  const epicCopy = game({
+    id: "epic:10",
+    name: "FragPunk",
+    platform: "epic",
+    installed: false,
+  });
+
+  test("le meme jeu sur deux boutiques ne fait qu'une carte", () => {
+    const collapsed = collapseDuplicates([epicCopy, steamCopy]);
+    expect(collapsed).toHaveLength(1);
+    // L'exemplaire installe porte la carte : c'est celui qu'on lance.
+    expect(collapsed[0].id).toBe("steam:10");
+    expect(collapsed[0].duplicates?.map((g) => g.id)).toEqual(["epic:10"]);
+  });
+
+  test("a defaut d'installation, le plus recemment joue l'emporte", () => {
+    const old = game({ id: "steam:11", name: "Hades", installed: false, lastPlayed: 10 });
+    const recent = game({
+      id: "epic:11",
+      name: "Hades",
+      platform: "epic",
+      installed: false,
+      lastPlayed: 900,
+    });
+    expect(collapseDuplicates([old, recent])[0].id).toBe("epic:11");
+  });
+
+  test("la ponctuation et la casse ne separent pas deux exemplaires", () => {
+    expect(titleKey("SPLITGATE: Arena Reloaded")).toBe(
+      titleKey("Splitgate - Arena Reloaded"),
+    );
+    expect(titleKey("Pokémon")).toBe(titleKey("pokemon"));
+  });
+
+  test("deux jeux differents restent deux cartes", () => {
+    const a = game({ id: "steam:12", name: "Hollow Knight" });
+    const b = game({ id: "steam:13", name: "Hollow Knight: Silksong" });
+    expect(collapseDuplicates([a, b])).toHaveLength(2);
+  });
+
+  test("un jeu seul ne porte aucun doublon", () => {
+    expect(collapseDuplicates([steamCopy])[0].duplicates).toBeUndefined();
   });
 });
