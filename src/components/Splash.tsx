@@ -47,7 +47,7 @@ export function Splash({
           />
         </div>
         <h1 className="font-display text-4xl leading-none font-semibold tracking-tight text-ink">
-          Gamlib
+          G-Lib
         </h1>
         <span className="text-[11px] text-ink-faint">v{__APP_VERSION__}</span>
       </div>

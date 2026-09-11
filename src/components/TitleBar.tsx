@@ -217,7 +217,7 @@ export function TitleBar({
             de la fenetre, c'est une etiquette. */}
         <LogoMark className="h-[20px] w-auto text-ink-muted" />
         <span className="font-display text-[13px] leading-none font-semibold tracking-tight text-ink-muted">
-          Gamlib
+          G-Lib
         </span>
         <span className="text-[10px] leading-none text-ink-faint">
           v{__APP_VERSION__}

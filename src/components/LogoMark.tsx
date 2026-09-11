@@ -1,5 +1,5 @@
 /**
- * The Gamlib mark, drawn rather than loaded.
+ * La marque de G-Lib, dessinee plutot que chargee.
  *
  * `public/GAMLIB.png` is one flat image, so its three cards cannot move
  * independently. Rebuilt as SVG they can: during an update they fan open and
@@ -24,20 +24,23 @@ export function LogoMark({
 }) {
   const skin = { fill: "currentColor", stroke: "#0b0d12", strokeWidth: 3 };
 
-  // The two behind are broad, squarer cards; the one in front is the narrow
-  // stadium that carries the G. Getting that contrast right is what makes the
-  // silhouette read as a fanned hand rather than three identical fingers.
-  const back = { x: 47, y: 8, width: 56, height: 84, rx: 16 };
-  const front = { x: 53, y: 4, width: 44, height: 90, rx: 22 };
+  // Les trois cartes ont la meme taille : c'est un jeu de cartes, pas trois
+  // formes differentes. Seul le rayon des coins change — celui du dessus est
+  // arrondi jusqu'au stade, ce qui le detache des deux autres sans le
+  // retrecir. La version precedente amincissait la carte centrale, et l'ecart
+  // se voyait des que le logo depassait vingt pixels.
+  const card = { x: 47, y: 8, width: 56, height: 84 };
+  const back = { ...card, rx: 16 };
+  const front = { ...card, rx: 28 };
 
   return (
     <svg
       viewBox="0 0 150 112"
       role="img"
-      aria-label="Gamlib"
+      aria-label="G-Lib"
       className={className}
     >
-      <title>Gamlib</title>
+      <title>G-Lib</title>
       {/* The pivot sits well below the cards: turning about a distant point
           spreads them sideways, which is what opens the fan instead of merely
           tilting three shapes on the spot. */}

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-/// A store/launcher GAMLIB can scan.
+/// A store/launcher G-Lib can scan.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Platform {
@@ -44,7 +44,7 @@ pub struct Game {
     /// Unix epoch seconds of the last launch, from the store when it says so
     /// and from our own session tracking otherwise.
     pub last_played: Option<i64>,
-    /// Seconds played, as measured by GAMLIB itself. No store exposes this
+    /// Seconds played, as measured by G-Lib itself. No store exposes this
     /// locally, so it only counts sessions seen since the app was installed.
     pub playtime_seconds: Option<u64>,
     /// Absolute path to the cached cover on disk, once fetched.
