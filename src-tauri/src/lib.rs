@@ -59,29 +59,38 @@ fn load_cached_library(
 
 /// One offline pass over the launchers, with the user's own marks folded
 /// back in. Shared by the sync command and by the watcher.
+///
+/// Les jeux possedes mais non installes en font partie. Ils ne viennent pas
+/// des launchers mais de la liste de licences Steam, resolue par le cache du
+/// store : les omettre ici revenait a les effacer de la grille a chaque retour
+/// sur la fenetre — il fallait alors relancer une synchronisation pour les
+/// revoir. Aucun reseau n'est touche : ce qui n'est pas en cache attendra la
+/// prochaine synchronisation.
 fn rescan(dir: &std::path::Path) -> ScanResult {
     let mut result = scanners::scan_all();
+
+    let mut store = cache::load_store(dir);
+    let owned = scanners::steam_owned_games(&mut store, false);
+    scanners::merge_owned(&mut result.games, owned);
+
     playtime::apply(&mut result.games, &playtime::load(dir));
     flags::apply(&mut result.games, &flags::load(dir));
     artwork::attach_cached(&mut result.games, &cache::covers_dir(dir));
+    scanners::sort_library(&mut result.games);
     let _ = cache::save(dir, &result);
     result
 }
 
 /// Re-read every launcher. Filesystem and registry work, so it runs off the UI thread.
+///
+/// Le meme travail que le watcher, et par le meme chemin : les deux avaient
+/// diverge, et c'est celui-ci qui avait perdu les jeux possedes.
 #[tauri::command]
 async fn scan_library(app: AppHandle, library: State<'_, Library>) -> Result<ScanResult, String> {
     let dir = data_dir(&app)?;
-    let result = tauri::async_runtime::spawn_blocking(move || {
-        let mut result = scanners::scan_all();
-        playtime::apply(&mut result.games, &playtime::load(&dir));
-        flags::apply(&mut result.games, &flags::load(&dir));
-        artwork::attach_cached(&mut result.games, &cache::covers_dir(&dir));
-        let _ = cache::save(&dir, &result);
-        result
-    })
-    .await
-    .map_err(|e| format!("scan interrompu : {e}"))?;
+    let result = tauri::async_runtime::spawn_blocking(move || rescan(&dir))
+        .await
+        .map_err(|e| format!("scan interrompu : {e}"))?;
 
     *library.0.lock().map_err(|_| "bibliotheque verrouillee")? = result.clone();
     Ok(result)
@@ -106,7 +115,7 @@ async fn fetch_catalog(app: AppHandle, library: State<'_, Library>) -> Result<Sc
         let mut result = current;
 
         let mut store = cache::load_store(&dir);
-        let owned = scanners::steam_owned_games(&mut store);
+        let owned = scanners::steam_owned_games(&mut store, true);
         let _ = cache::save_store(&dir, &store);
         scanners::merge_owned(&mut result.games, owned);
         playtime::apply(&mut result.games, &playtime::load(&dir));
