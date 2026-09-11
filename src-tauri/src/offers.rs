@@ -426,14 +426,14 @@ fn ubisoft(client: &reqwest::blocking::Client, title: &str) -> Option<(Price, Op
 pub fn lookup(
     client: &reqwest::blocking::Client,
     title: &str,
-    appid: u32,
+    appid: Option<u32>,
     itad_key: Option<&str>,
 ) -> Offers {
     let (epic_offer, ig_offer, ubi_offer, aggregate) = std::thread::scope(|scope| {
         let a = scope.spawn(|| epic(client, title));
         let b = scope.spawn(|| instant_gaming(client, title));
         let c = scope.spawn(|| ubisoft(client, title));
-        let d = scope.spawn(|| itad_key.and_then(|key| itad::deals(client, key, appid)));
+        let d = scope.spawn(|| itad_key.and_then(|key| itad::deals(client, key, appid, title)));
         (
             a.join().unwrap_or(None),
             b.join().unwrap_or(None),

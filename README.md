@@ -122,6 +122,24 @@ Ni compte ni clé d'API.
 Les jeux déjà présents dans votre bibliothèque sont marqués comme tels, quelle
 que soit la plateforme qui les a fournis.
 
+#### Au-delà du rayon Steam
+
+La recherche interroge aussi **IGDB**, un catalogue de jeux — et non
+d'inventaire de boutique. Un jeu vendu seulement sur l'Epic Store, ou seulement
+par Ubisoft, n'existe pas dans le catalogue Steam : « aucun résultat » était
+alors la pire réponse possible à « est-ce que ce jeu existe ».
+
+Steam passe d'abord et l'emporte toujours : sa fiche porte un prix, un résumé
+en français et des captures, là où un catalogue ne porte qu'un titre. IGDB ne
+sert qu'aux jeux que Steam ne vend pas — reconnus par leur titre, ou par
+l'appid Steam qu'IGDB porte lui-même.
+
+Ces fiches-là n'ont pas de prix Steam, et le disent. Le comparateur, lui,
+répond quand même : à défaut d'appid il cherche par titre.
+
+Les identifiants vivent dans `%USERPROFILE%\.gamlib\igdb.json`. Sans eux, la
+recherche se limite à Steam, comme avant.
+
 #### Le prix ailleurs
 
 Ouvrir une fiche interroge quatre sources, en parallèle :

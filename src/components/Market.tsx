@@ -74,6 +74,13 @@ function PriceTag({
 function Price({ item, large = false }: { item: MarketItem; large?: boolean }) {
   const size = large ? "text-base" : "text-[13px]";
 
+  // Venu du catalogue general : Steam ne le vend pas, donc il n'en donne pas
+  // le prix. Le dire vaut mieux qu'un tiret, qui se lit comme une panne.
+  if (item.appid === null) {
+    return (
+      <span className={`${size} text-ink-faint`}>Pas vendu sur Steam</span>
+    );
+  }
   if (item.free) {
     return <span className={`${size} text-ink-muted`}>Gratuit</span>;
   }
@@ -304,7 +311,7 @@ function Detail({
     return () => {
       cancelled = true;
     };
-  }, [item.appid, item.name]);
+  }, [item.id, item.name]);
 
   const released = item.releaseDate
     ? new Date(item.releaseDate * 1000).toLocaleDateString("fr-FR", {
@@ -495,7 +502,7 @@ export function Market({ library, onError }: Props) {
           setSearched(true);
           // La fiche ouverte parle d'une recherche precedente.
           setSelected((current) =>
-            current && items.some((item) => item.appid === current.appid)
+            current && items.some((item) => item.id === current.id)
               ? current
               : null,
           );
@@ -565,10 +572,10 @@ export function Market({ library, onError }: Props) {
             <div className="grid grid-cols-[repeat(auto-fill,170px)] justify-start gap-3 p-4">
               {results.map((item) => (
                 <Card
-                  key={item.appid}
+                  key={item.id}
                   item={item}
                   owned={owned.has(normalize(item.name))}
-                  selected={selected?.appid === item.appid}
+                  selected={selected?.id === item.id}
                   onSelect={() => setSelected(item)}
                 />
               ))}

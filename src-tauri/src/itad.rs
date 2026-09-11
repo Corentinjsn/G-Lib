@@ -46,6 +46,11 @@ pub struct Deals {
 /// ITAD rend un nombre et un code de monnaie ; l'euro se met derriere, avec
 /// une virgule, et le reste garde son code plutot que d'inventer un symbole.
 fn format(amount: f64, currency: &str) -> String {
+    // Un jeu gratuit a bien un prix chez ITAD, et il vaut zero. « 0,00 € »
+    // se lit comme un bug ; le mot se lit comme une information.
+    if amount == 0.0 {
+        return "Gratuit".to_string();
+    }
     match currency {
         "EUR" => format!("{amount:.2} €").replace('.', ","),
         "USD" => format!("{amount:.2} $"),
@@ -61,9 +66,21 @@ fn money(node: &serde_json::Value) -> Option<String> {
     ))
 }
 
-/// L'identifiant ITAD du jeu, resolu par son appid Steam.
-fn lookup(client: &reqwest::blocking::Client, key: &str, appid: u32) -> Option<String> {
-    let url = format!("{LOOKUP}?key={}&appid={appid}", percent_encode(key));
+/// L'identifiant ITAD du jeu.
+///
+/// Par l'appid Steam quand la fiche en a un — c'est exact et sans ambiguite —
+/// et par le titre sinon, pour les jeux que Steam ne vend pas.
+fn lookup(
+    client: &reqwest::blocking::Client,
+    key: &str,
+    appid: Option<u32>,
+    title: &str,
+) -> Option<String> {
+    let query = match appid {
+        Some(appid) => format!("appid={appid}"),
+        None => format!("title={}", percent_encode(title)),
+    };
+    let url = format!("{LOOKUP}?key={}&{query}", percent_encode(key));
     let value = client
         .get(&url)
         .send()
@@ -78,8 +95,13 @@ fn lookup(client: &reqwest::blocking::Client, key: &str, appid: u32) -> Option<S
 }
 
 /// Les prix du jour pour ce jeu, la meilleure offre de chaque boutique.
-pub fn deals(client: &reqwest::blocking::Client, key: &str, appid: u32) -> Option<Deals> {
-    let id = lookup(client, key, appid)?;
+pub fn deals(
+    client: &reqwest::blocking::Client,
+    key: &str,
+    appid: Option<u32>,
+    title: &str,
+) -> Option<Deals> {
+    let id = lookup(client, key, appid, title)?;
     let url = format!(
         "{PRICES}?key={}&country=FR&capacity={CAPACITY}",
         percent_encode(key)
@@ -146,5 +168,6 @@ mod tests {
         assert_eq!(format(19.99, "USD"), "19.99 $");
         // Une monnaie qu'on ne sait pas ecrire garde son code.
         assert_eq!(format(120.0, "PLN"), "120.00 PLN");
+        assert_eq!(format(0.0, "EUR"), "Gratuit");
     }
 }
