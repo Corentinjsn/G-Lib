@@ -2,7 +2,7 @@
 //!
 //! Only Steam tells us when a game was last played, which left the other three
 //! platforms permanently at the bottom of any "recently played" sort. Rather
-//! than chase four proprietary histories, GAMLIB keeps its own: every installed
+//! than chase four proprietary histories, G-Lib keeps its own: every installed
 //! game has an install directory, so a running process whose executable sits
 //! under one of them *is* that game running.
 //!
