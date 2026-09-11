@@ -2,10 +2,15 @@ import { SEARCH_INPUT_ID } from "../hooks/useGridKeys";
 import {
   INSTALL_FILTERS,
   INSTALL_FILTER_LABELS,
+  PLATFORMS,
+  PLATFORM_COLORS,
+  PLATFORM_LABELS,
   SORT_LABELS,
   type InstallFilter,
+  type Platform,
   type SortKey,
 } from "../types";
+import { PlatformIcon } from "./PlatformIcon";
 
 interface Props {
   count: number;
@@ -17,6 +22,11 @@ interface Props {
   installFilter: InstallFilter;
   onInstallFilterChange: (filter: InstallFilter) => void;
   installCounts: Record<InstallFilter, number>;
+  /** La boutique d'origine, ou null pour toutes. */
+  platform: Platform | null;
+  onPlatformChange: (platform: Platform | null) => void;
+  /** Combien de jeux chaque boutique apporte, dans l'ensemble courant. */
+  platformCounts: Record<Platform, number>;
   sort: SortKey;
   onSortChange: (sort: SortKey) => void;
 }
@@ -38,6 +48,9 @@ export function ViewBar({
   installFilter,
   onInstallFilterChange,
   installCounts,
+  platform,
+  onPlatformChange,
+  platformCounts,
   sort,
   onSortChange,
 }: Props) {
@@ -95,6 +108,41 @@ export function ViewBar({
             {INSTALL_FILTER_LABELS[filter]}
           </button>
         ))}
+      </div>
+
+      {/* Les marques plutot que les noms : quatre boutons nommes prendraient
+          la moitie de la barre, et un logo se reconnait plus vite qu'un mot a
+          cette taille. Un second clic sur la meme boutique revient a toutes,
+          ce qui evite un bouton « Toutes » de plus. */}
+      <div className="flex shrink-0 items-center gap-0.5 rounded-md border border-line bg-surface-2 p-0.5">
+        {PLATFORMS.map((entry) => {
+          const active = platform === entry;
+          const count = platformCounts[entry];
+          return (
+            <button
+              key={entry}
+              type="button"
+              disabled={count === 0 && !active}
+              onClick={() => onPlatformChange(active ? null : entry)}
+              aria-pressed={active}
+              title={
+                active
+                  ? `${PLATFORM_LABELS[entry]} — tout afficher`
+                  : `${PLATFORM_LABELS[entry]} — ${count} jeux`
+              }
+              className={`flex size-7 items-center justify-center rounded transition disabled:opacity-30 ${
+                active ? "bg-surface-3" : "hover:bg-surface-3"
+              }`}
+              style={{
+                color: active ? PLATFORM_COLORS[entry] : undefined,
+              }}
+            >
+              <span className={active ? "" : "text-ink-muted"}>
+                <PlatformIcon platform={entry} className="size-4" />
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       <select

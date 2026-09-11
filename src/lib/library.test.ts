@@ -57,6 +57,7 @@ const base = {
   installFilter: "all" as const,
   selection: { kind: "all" } as const,
   collections: [soiree],
+  platform: null,
   query: "",
   sort: "name" as const,
 };
@@ -188,16 +189,16 @@ describe("searchPalette", () => {
 describe("inScope", () => {
   const view = (over = {}) => ({
     installFilter: "all" as const,
+    platform: null,
     selection: { kind: "all" } as const,
     collections: [] as Collection[],
     ...over,
   });
 
-  test("un jeu d'une autre plateforme sort du périmètre", () => {
+  test("un jeu d'une autre boutique sort du périmètre", () => {
     expect(inScope(eldenRing, view())).toBe(true);
-    expect(
-      inScope(eldenRing, view({ selection: { kind: "platform", platform: "epic" } })),
-    ).toBe(false);
+    expect(inScope(eldenRing, view({ platform: "epic" }))).toBe(false);
+    expect(inScope(eldenRing, view({ platform: "steam" }))).toBe(true);
   });
 
   test("le filtre d'installation compte, pas la recherche", () => {
@@ -270,5 +271,38 @@ describe("collapseDuplicates", () => {
 
   test("un jeu seul ne porte aucun doublon", () => {
     expect(collapseDuplicates([steamCopy])[0].duplicates).toBeUndefined();
+  });
+});
+
+describe("la boutique d'origine comme facette", () => {
+  test("elle se combine avec l'ensemble choisi plutot que de le remplacer", () => {
+    // Les favoris, mais seulement ceux de Steam.
+    const found = selectGames(games, {
+      ...base,
+      installFilter: "all",
+      selection: { kind: "favorites" },
+      platform: "steam",
+    });
+    expect(found.map((g) => g.id)).toEqual(["steam:3"]);
+
+    expect(
+      selectGames(games, {
+        ...base,
+        installFilter: "all",
+        selection: { kind: "favorites" },
+        platform: "epic",
+      }),
+    ).toEqual([]);
+  });
+
+  test("sans boutique choisie, rien n'est ecarte", () => {
+    const all = selectGames(games, { ...base, installFilter: "all" });
+    const epic = selectGames(games, {
+      ...base,
+      installFilter: "all",
+      platform: "epic",
+    });
+    expect(epic.length).toBeLessThan(all.length);
+    expect(epic.every((g) => g.platform === "epic")).toBe(true);
   });
 });
