@@ -62,15 +62,16 @@ pub fn launch_uri(uri: &str) -> Result<()> {
 /// compte. Une commande qui ouvrirait l'adresse qu'on lui donne serait une
 /// passerelle vers le shell, ou `file:` et les protocoles d'installeurs sont
 /// a portee de la premiere page qui la trouverait.
-const STORE_HOSTS: [&str; 16] = [
+const STORE_HOSTS: [&str; 17] = [
     "store.steampowered.com",
     "store.epicgames.com",
     "www.ea.com",
     "store.ubisoft.com",
     "www.instant-gaming.com",
-    // Celles qu'IsThereAnyDeal renvoie : son propre lien de redirection, et
-    // les boutiques qu'il suit. Une boutique absente de cette liste garde son
-    // prix mais perd son lien — c'est le sens de `is_store_url`.
+    // Celles qu'IsThereAnyDeal renvoie. Ses liens d'achat ne passent pas par
+    // son site mais par `itad.link`, verifie a l'arrivee : une boutique
+    // absente de cette liste garde son prix mais perd son lien.
+    "itad.link",
     "isthereanydeal.com",
     "www.gog.com",
     "www.humblebundle.com",
