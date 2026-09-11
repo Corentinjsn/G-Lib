@@ -25,7 +25,7 @@ export const searchMarket = (query: string) =>
  * fiche ouverte, jamais lance pour toute une liste de resultats. L'appid sert
  * au comparateur, qui n'a alors aucun titre a deviner.
  */
-export const storeOffers = (name: string, appid: number) =>
+export const storeOffers = (name: string, appid: number | null) =>
   invoke<Offers>("store_offers", { name, appid });
 
 /**

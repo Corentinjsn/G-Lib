@@ -106,7 +106,11 @@ export interface MarketPrice {
 }
 
 export interface MarketItem {
-  appid: number;
+  /** `steam:2369390` ou `igdb:7360` : les deux catalogues numerotent chacun
+      de leur cote. */
+  id: string;
+  /** Absent pour un jeu que Steam ne vend pas. */
+  appid: number | null;
   name: string;
   coverUrl: string | null;
   headerUrl: string | null;
@@ -119,7 +123,8 @@ export interface MarketItem {
   free: boolean;
   price: MarketPrice | null;
   screenshots: string[];
-  storeUrl: string;
+  /** La page Steam du jeu, quand il y en a une. */
+  storeUrl: string | null;
 }
 
 /** Ce que le meme jeu coute chez une autre boutique. */

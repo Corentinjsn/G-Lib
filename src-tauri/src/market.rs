@@ -15,6 +15,8 @@
 //! autres boutiques, l'application n'invente pas de prix : elle emmene chez
 //! elles avec le titre deja saisi, ce que fait `stores.ts` cote interface.
 
+use crate::credentials::Igdb;
+use crate::igdb;
 use crate::steam_store::{client, percent_encode, ASSET_HOST};
 use serde::Serialize;
 
@@ -42,7 +44,13 @@ pub struct Price {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MarketItem {
-    pub appid: u32,
+    /// Cle stable de la fiche : `steam:2369390` ou `igdb:7360`. Les deux
+    /// catalogues numerotent leurs jeux chacun de leur cote.
+    pub id: String,
+    /// Absent pour un jeu que Steam ne vend pas. Le prix Steam et la fiche du
+    /// magasin en dependent, le comparateur non — il sait aussi chercher par
+    /// titre.
+    pub appid: Option<u32>,
     pub name: String,
     /// Jaquette portrait, la meme forme que les cartes de la bibliotheque.
     pub cover_url: Option<String>,
@@ -57,7 +65,8 @@ pub struct MarketItem {
     pub free: bool,
     pub price: Option<Price>,
     pub screenshots: Vec<String>,
-    pub store_url: String,
+    /// La page Steam du jeu, quand il y en a une.
+    pub store_url: Option<String>,
 }
 
 /// Les appids que Steam juge pertinents pour ce terme, dans son ordre.
@@ -147,7 +156,8 @@ fn describe(item: &serde_json::Value) -> Option<MarketItem> {
     let release = item.get("release").unwrap_or(&null);
 
     Some(MarketItem {
-        appid,
+        id: format!("steam:{appid}"),
+        appid: Some(appid),
         name,
         // Le 2x est en 600x900 contre 300x450 : il vaut le detour sur un
         // ecran dense, mais tous les jeux ne le publient pas.
@@ -177,7 +187,7 @@ fn describe(item: &serde_json::Value) -> Option<MarketItem> {
                     .collect()
             })
             .unwrap_or_default(),
-        store_url: format!("https://store.steampowered.com/app/{appid}/"),
+        store_url: Some(format!("https://store.steampowered.com/app/{appid}/")),
     })
 }
 
@@ -216,16 +226,91 @@ fn items(client: &reqwest::blocking::Client, appids: &[u32]) -> Vec<MarketItem> 
     // qui veut dire quelque chose : c'est le classement par pertinence.
     appids
         .iter()
-        .filter_map(|id| described.iter().find(|item| item.appid == *id).cloned())
+        .filter_map(|id| {
+            described
+                .iter()
+                .find(|item| item.appid == Some(*id))
+                .cloned()
+        })
         .collect()
 }
 
-/// Cherche un jeu a acheter. Une requete pour le classement, une pour les
-/// fiches.
-pub fn search(term: &str) -> Result<Vec<MarketItem>, String> {
+/// Un titre, reduit a ce qui permet de reconnaitre le meme jeu d'un catalogue
+/// a l'autre.
+fn key(title: &str) -> String {
+    title
+        .chars()
+        .filter(|c| c.is_alphanumeric())
+        .map(|c| c.to_ascii_lowercase())
+        .collect()
+}
+
+/// Ce qu'IGDB apprend et que Steam ignore, mis a la forme d'une fiche.
+///
+/// Pas de prix, pas de captures, pas de resume francais : ce catalogue decrit
+/// des jeux, pas un rayon. La fiche le dit en n'affichant rien plutot qu'en
+/// inventant.
+fn from_igdb(game: igdb::IgdbGame) -> MarketItem {
+    MarketItem {
+        id: format!("igdb:{}", game.id),
+        appid: None,
+        name: game.name,
+        cover_url: game.cover_url,
+        header_url: None,
+        short_description: game.summary,
+        developers: Vec::new(),
+        publishers: game.companies,
+        release_date: game.release_date,
+        coming_soon: false,
+        free: false,
+        price: None,
+        screenshots: Vec::new(),
+        store_url: None,
+    }
+}
+
+/// Cherche un jeu a acheter, chez Steam puis dans le catalogue general.
+///
+/// Steam d'abord, et toujours prefere : une fiche de boutique porte un prix,
+/// un resume en francais et des captures, la ou un catalogue ne porte qu'un
+/// titre. IGDB sert donc a une seule chose, mais qu'il est seul a savoir
+/// faire : repondre pour les jeux que Steam ne vend pas.
+pub fn search(term: &str, igdb_creds: Option<&Igdb>) -> Result<Vec<MarketItem>, String> {
     if term.trim().is_empty() {
         return Ok(Vec::new());
     }
     let client = client().ok_or_else(|| "client http indisponible".to_string())?;
-    Ok(items(&client, &search_ids(&client, term)))
+
+    // Les deux catalogues partent ensemble : l'un n'attend rien de l'autre.
+    let (steam, extra) = std::thread::scope(|scope| {
+        let a = scope.spawn(|| items(&client, &search_ids(&client, term)));
+        let b = scope.spawn(|| match igdb_creds {
+            Some(creds) => igdb::search(&client, creds, term),
+            None => Vec::new(),
+        });
+        (a.join().unwrap_or_default(), b.join().unwrap_or_default())
+    });
+
+    let mut known: std::collections::HashSet<String> =
+        steam.iter().map(|item| key(&item.name)).collect();
+    let steam_appids: std::collections::HashSet<u32> =
+        steam.iter().filter_map(|item| item.appid).collect();
+
+    let mut found = steam;
+    for game in extra {
+        // Deja la sous sa forme riche, par le titre ou par l'appid qu'IGDB
+        // porte lui-meme.
+        if game.steam_appid.is_some_and(|id| steam_appids.contains(&id)) {
+            continue;
+        }
+        if !known.insert(key(&game.name)) {
+            continue;
+        }
+        found.push(from_igdb(game));
+        if found.len() >= MAX_RESULTS * 2 {
+            break;
+        }
+    }
+
+    Ok(found)
 }

@@ -32,8 +32,12 @@ export function storeLinks(item: MarketItem): StoreLink[] {
       id: "steam",
       label: PLATFORM_LABELS.steam,
       platform: "steam",
-      url: item.storeUrl,
-      exact: true,
+      // Un jeu venu du catalogue general n'a pas de page Steam : on y cherche
+      // le titre, comme chez les autres.
+      url:
+        item.storeUrl ??
+        `https://store.steampowered.com/search/?term=${term}`,
+      exact: item.storeUrl !== null,
     },
     {
       id: "epic",
