@@ -74,7 +74,14 @@ pub fn sort_library(games: &mut [Game]) {
 ///
 /// The licence list grants far more appids than it does games, so every answer
 /// is cached -- including the negative ones, which are the majority.
-pub fn steam_owned_games(cache: &mut crate::cache::StoreCache) -> Vec<Game> {
+///
+/// `allow_network` distingue les deux usages. La synchronisation interroge le
+/// store pour les appids qu'elle ne connait pas encore ; les passes hors ligne
+/// — le retour sur la fenetre, le fichier qui change — se contentent du cache.
+/// Elles doivent rester silencieuses et instantanees, mais elles ne peuvent
+/// pas pour autant ignorer les jeux possedes : les oublier revenait a vider la
+/// grille de tout ce qui n'est pas installe.
+pub fn steam_owned_games(cache: &mut crate::cache::StoreCache, allow_network: bool) -> Vec<Game> {
     use crate::cache::StoreEntry;
 
     let appids = steam::owned_appids();
@@ -84,7 +91,7 @@ pub fn steam_owned_games(cache: &mut crate::cache::StoreCache) -> Vec<Game> {
         .filter(|id| !cache.contains_key(&id.to_string()))
         .collect();
 
-    if !unknown.is_empty() {
+    if allow_network && !unknown.is_empty() {
         if let Some(client) = crate::steam_store::client() {
             for chunk in unknown.chunks(crate::steam_store::ITEMS_PER_CALL) {
                 let found: std::collections::HashMap<u32, crate::steam_store::StoreItem> =
@@ -133,6 +140,40 @@ mod tests {
     }
 }
 
+/// Diagnostic : ce que voit une passe hors ligne — un retour sur la fenetre,
+/// un fichier de launcher qui change.
+///
+/// Elle doit rendre les jeux installes **et** les possedes que le cache sait
+/// nommer. Tant qu'elle ne rendait que les installes, revenir sur la fenetre
+/// effacait de la grille tout ce qui n'etait pas installe.
+///
+/// `cargo test -- --ignored --nocapture offline_pass_keeps_owned`
+#[cfg(test)]
+#[test]
+#[ignore]
+fn offline_pass_keeps_owned() {
+    let dir = std::path::PathBuf::from(std::env::var("APPDATA").expect("APPDATA"))
+        .join("com.janso.gamlib");
+
+    let mut result = scan_all();
+    let installed = result.games.len();
+
+    let mut store = crate::cache::load_store(&dir);
+    let owned = steam_owned_games(&mut store, false);
+    merge_owned(&mut result.games, owned);
+
+    let total = result.games.len();
+    println!(
+        "
+passe hors ligne : {installed} installes, {} possedes en plus, {total} au total",
+        total - installed
+    );
+    assert!(
+        total > installed,
+        "la passe hors ligne n'a rendu aucun jeu possede : le cache du store est-il vide ?"
+    );
+}
+
 /// Diagnostic: resolve this machine's Steam licences against the store.
 /// Ignored by default -- it needs the network and depends on the account.
 ///
@@ -143,7 +184,7 @@ mod tests {
 fn dump_steam_owned() {
     let appids = steam::owned_appids();
     let mut cache = crate::cache::StoreCache::new();
-    let games = steam_owned_games(&mut cache);
+    let games = steam_owned_games(&mut cache, true);
 
     let named = cache.values().filter(|v| v.is_some()).count();
     println!(
