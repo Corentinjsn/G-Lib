@@ -117,17 +117,35 @@ que soit la plateforme qui les a fournis.
 
 #### Le prix ailleurs
 
-Ouvrir une fiche interroge trois autres boutiques, en parallèle :
+Ouvrir une fiche interroge quatre sources, en parallèle :
 
-| Boutique | Source | Forme |
+| Source | Ce qu'elle donne | Forme |
 |---|---|---|
-| Epic | GraphQL public, en GET | JSON, prix déjà formatés |
-| Instant Gaming | `window.searchResults` dans la page de recherche | JSON d'Algolia, prix public et remise |
-| Ubisoft | recherche rendue côté serveur | HTML |
+| **IsThereAnyDeal** | une trentaine de boutiques d'un coup, en euros, remise et plus bas historique compris | JSON |
+| Epic | son prix | GraphQL public, en GET |
+| Instant Gaming | prix clé et prix public | `window.searchResults` dans la page de recherche, le JSON d'Algolia |
+| Ubisoft | son prix | recherche rendue côté serveur, donc HTML |
 
-**EA n'a pas de source** : sa boutique est une application qui parle à une API
-fermée. Sa ligne reste un lien de recherche, et la fiche le dit plutôt que de
-laisser croire à un chargement qui n'aboutit pas.
+ITAD est le premier servi : nos fiches viennent de Steam, donc portent un
+appid, qu'il sait résoudre — il n'y a plus de titre à faire correspondre. Quand
+il répond pour une boutique, sa valeur l'emporte ; les trois autres sources
+restent le repli, pour une clé absente, une boutique qu'il ne suit pas, ou un
+jeu qu'il ne connaît pas encore. Il ne suit pas Instant Gaming, dont le lecteur
+reste donc nécessaire.
+
+Sa clé vit hors du dépôt, dans `%USERPROFILE%.gamlibitad.key`, à côté de
+celle de l'updater. Son absence n'est pas une erreur : l'application se
+contente alors des trois sources écrites à la main.
+
+Ses liens d'achat passent par `itad.link` et sont **affiliés** — c'est son
+modèle économique. Ils sont vérifiés à l'arrivée plutôt qu'au clic : une
+boutique hors de la liste d'hôtes garde son prix mais perd son bouton, pour
+qu'aucun bouton affiché ne puisse échouer sous le doigt.
+
+**EA n'a pas de source propre** : sa boutique est une application qui parle à
+une API fermée. ITAD suit pourtant l'EA Store, donc sa ligne porte un prix
+quand il en a un ; sinon elle reste un lien de recherche, et la fiche le dit
+plutôt que de laisser croire à un chargement qui n'aboutit pas.
 
 Le titre doit correspondre **exactement**, une fois réduit à ses lettres et ses
 chiffres — sans quoi *Hollow Knight: Silksong* passerait pour *Hollow Knight*,
@@ -137,7 +155,8 @@ sous-titre qui tranche : le « Pack Scorpion du désert » s'appelle *Assassin's
 Creed Mirage* comme le jeu et coûte 14,99 €. Seules les cartes qui annoncent
 l'édition standard, ou qui n'annoncent rien, portent le prix du jeu.
 
-Deux de ces trois sources lisent du HTML, ce qui est fragile par nature :
+Deux des sources écrites à la main lisent du HTML, ce qui est fragile par
+nature :
 chacune échoue pour son propre compte, et la ligne redevient un simple lien de
 recherche.
 
