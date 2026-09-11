@@ -24,42 +24,52 @@ export function LogoMark({
 }) {
   const skin = { fill: "currentColor", stroke: "#0b0d12", strokeWidth: 3 };
 
-  // Les trois cartes ont la meme taille : c'est un jeu de cartes, pas trois
-  // formes differentes. Seul le rayon des coins change — celui du dessus est
-  // arrondi jusqu'au stade, ce qui le detache des deux autres sans le
-  // retrecir. La version precedente amincissait la carte centrale, et l'ecart
-  // se voyait des que le logo depassait vingt pixels.
-  const card = { x: 47, y: 8, width: 56, height: 84 };
-  const back = { ...card, rx: 16 };
-  const front = { ...card, rx: 28 };
+  // Three identical cards. Not "roughly identical": the numbers below are
+  // measured off public/GAMLIB.png rather than judged by eye, because every
+  // attempt at judging it by eye was wrong.
+  //
+  //   card       283 x 458 in the original -> 0.62, hence 56 x 90
+  //   corners    the flat top spans 120 of the 283 -> radius 0.29 of the
+  //              width, the same on all three. The middle card only looks
+  //              rounder because the other two are tilted.
+  //   the G      half the height of its card, three quarters of its width
+  //
+  // The fan is 13 degrees, not 21: the top edge of a side card drops 39
+  // points over 168 in the original, which is the angle it is drawn at.
+  const card = { x: 47, y: 8, width: 56, height: 90, rx: 16 };
 
   return (
+    // The frame is tight on the drawing. The previous one left a quarter of
+    // its width empty, so the mark came out a fifth smaller than the original
+    // at the same box size -- the original fills its own frame at 95 %.
     <svg
-      viewBox="0 0 150 112"
+      viewBox="14 4 122 105"
       role="img"
       aria-label="G-Lib"
       className={className}
     >
       <title>G-Lib</title>
-      {/* The pivot sits well below the cards: turning about a distant point
-          spreads them sideways, which is what opens the fan instead of merely
-          tilting three shapes on the spot. */}
+      {/* The pivot sits far below the cards -- turning about a distant point
+          spreads them sideways rather than tilting them on the spot. Its
+          height is what sets how far they reach: 142 puts the outer tip of
+          each card where the original has it. It has to match the
+          transform-origin in index.css, which animates the same shapes. */}
       <g className={animated ? "logo-card-left" : undefined}>
-        <rect {...back} {...skin} transform="rotate(-21 75 96)" />
+        <rect {...card} {...skin} transform="rotate(-13 75 142)" />
       </g>
       <g className={animated ? "logo-card-right" : undefined}>
-        <rect {...back} {...skin} transform="rotate(21 75 96)" />
+        <rect {...card} {...skin} transform="rotate(13 75 142)" />
       </g>
 
       <g className={animated ? "logo-card-front" : undefined}>
-        <rect {...front} {...skin} />
+        <rect {...card} {...skin} />
         <text
           x="75"
-          y="49"
+          y="50"
           textAnchor="middle"
           dominantBaseline="central"
           fill="#0b0d12"
-          fontSize="46"
+          fontSize="58"
           fontWeight="700"
           fontFamily='"League Spartan Variable", "Segoe UI", system-ui, sans-serif'
         >
