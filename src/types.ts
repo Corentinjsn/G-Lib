@@ -50,26 +50,26 @@ export interface Collection {
   gameIds: string[];
 }
 
-/** What the grid is currently showing. */
+/**
+ * L'ensemble que la grille montre.
+ *
+ * La plateforme n'en fait pas partie : elle n'est pas un ensemble mais une
+ * facette, au meme titre que « installes ». On veut ses favoris Steam, ou les
+ * jeux Epic d'une liste — ce qu'une selection unique ne permettait pas.
+ */
 export type Selection =
   | { kind: "all" }
   | { kind: "favorites" }
   | { kind: "hidden" }
-  | { kind: "platform"; platform: Platform }
   | { kind: "collection"; id: string };
 
 export const ALL_SELECTION: Selection = { kind: "all" };
 
 /** Stable key for a selection, used for comparison and for expanded state. */
 export function selectionKey(selection: Selection): string {
-  switch (selection.kind) {
-    case "platform":
-      return `platform:${selection.platform}`;
-    case "collection":
-      return `collection:${selection.id}`;
-    default:
-      return selection.kind;
-  }
+  return selection.kind === "collection"
+    ? `collection:${selection.id}`
+    : selection.kind;
 }
 
 export interface ScanResult {
