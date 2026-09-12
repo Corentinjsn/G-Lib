@@ -3,6 +3,7 @@ import {
   collapseDuplicates,
   inScope,
   installCounts,
+  launchLabel,
   paletteRank,
   searchPalette,
   selectGames,
@@ -27,6 +28,7 @@ function game(overrides: Partial<Game> & { id: string; name: string }): Game {
     coverPath: null,
     coverUrls: [],
     actionUri: "steam://",
+    activity: "idle" as const,
     ...overrides,
   };
 }
@@ -304,5 +306,35 @@ describe("la boutique d'origine comme facette", () => {
     });
     expect(epic.length).toBeLessThan(all.length);
     expect(epic.every((g) => g.platform === "epic")).toBe(true);
+  });
+});
+
+describe("launchLabel", () => {
+  const idle = game({ id: "steam:20", name: "Hades" });
+
+  test("un jeu installe se joue", () => {
+    expect(launchLabel(idle)).toEqual({ text: "Jouer", enabled: true });
+  });
+
+  test("un jeu non installe s'installe", () => {
+    expect(launchLabel({ ...idle, installed: false })).toEqual({
+      text: "Installer",
+      enabled: true,
+    });
+  });
+
+  test("un jeu qui tourne ne se relance pas", () => {
+    expect(launchLabel({ ...idle, activity: "running" })).toEqual({
+      text: "En cours",
+      enabled: false,
+    });
+  });
+
+  test("un jeu qui demarre non plus", () => {
+    // La fenetre exacte ou le second clic lancait le jeu deux fois.
+    expect(launchLabel({ ...idle, activity: "launching" })).toEqual({
+      text: "Lancement…",
+      enabled: false,
+    });
   });
 });

@@ -34,6 +34,7 @@ import {
   inScope,
   inSelection,
   installCounts,
+  launchLabel,
   selectGames,
   universe,
 } from "./lib/library";
@@ -321,8 +322,8 @@ export default function App() {
       heading: game.name,
       items: [
         {
-          label: game.installed ? "Jouer" : "Installer",
-          action: () => handleLaunch(game),
+          label: launchLabel(game).text,
+          action: () => launchLabel(game).enabled && handleLaunch(game),
         },
         ...(game.installed
           ? [
@@ -396,8 +397,10 @@ export default function App() {
    */
   const paletteActions = (game: Game): PaletteAction[] => [
     {
-      label: game.installed ? "Jouer" : "Installer",
-      run: () => handleLaunch(game),
+      // Le meme libelle que la carte et le panneau : un jeu qui tourne le dit
+      // partout ou on pourrait le relancer.
+      label: launchLabel(game).text,
+      run: () => launchLabel(game).enabled && handleLaunch(game),
     },
     ...(game.installed
       ? [{ label: "Ouvrir le dossier", run: () => handleOpenFolder(game) }]

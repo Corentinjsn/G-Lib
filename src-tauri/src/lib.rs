@@ -1,3 +1,4 @@
+mod activity;
 mod artwork;
 mod binvdf;
 mod cache;
@@ -26,6 +27,22 @@ use tauri::{AppHandle, Emitter, Manager, State};
 #[derive(Default)]
 struct Library(Mutex<ScanResult>);
 
+impl Library {
+    /// Stamps a fresh scan with what each game is doing, keeps it, and hands
+    /// it back.
+    ///
+    /// Every path that produces a library goes through here. The alternative
+    /// -- each command remembering to apply the running state -- is exactly
+    /// how the offline scan once came to forget the owned games.
+    fn publish(&self, activity: &activity::State, mut result: ScanResult) -> ScanResult {
+        activity.apply(&mut result.games);
+        if let Ok(mut held) = self.0.lock() {
+            *held = result.clone();
+        }
+        result
+    }
+}
+
 fn data_dir(app: &AppHandle) -> Result<PathBuf, String> {
     app.path()
         .app_data_dir()
@@ -49,6 +66,7 @@ fn find_game(library: &State<'_, Library>, id: &str) -> Result<Game, String> {
 fn load_cached_library(
     app: AppHandle,
     library: State<'_, Library>,
+    activity: State<'_, activity::State>,
 ) -> Result<Option<ScanResult>, String> {
     let dir = data_dir(&app)?;
     let Some(mut cached) = cache::load(&dir) else {
@@ -56,8 +74,7 @@ fn load_cached_library(
     };
     // Art may have been cleared since the cache was written.
     artwork::attach_cached(&mut cached.games, &cache::covers_dir(&dir));
-    *library.0.lock().map_err(|_| "bibliotheque verrouillee")? = cached.clone();
-    Ok(Some(cached))
+    Ok(Some(library.publish(&activity, cached)))
 }
 
 /// One offline pass over the launchers, with the user's own marks folded
@@ -89,14 +106,17 @@ fn rescan(dir: &std::path::Path) -> ScanResult {
 /// Le meme travail que le watcher, et par le meme chemin : les deux avaient
 /// diverge, et c'est celui-ci qui avait perdu les jeux possedes.
 #[tauri::command]
-async fn scan_library(app: AppHandle, library: State<'_, Library>) -> Result<ScanResult, String> {
+async fn scan_library(
+    app: AppHandle,
+    library: State<'_, Library>,
+    activity: State<'_, activity::State>,
+) -> Result<ScanResult, String> {
     let dir = data_dir(&app)?;
     let result = tauri::async_runtime::spawn_blocking(move || rescan(&dir))
         .await
         .map_err(|e| format!("scan interrompu : {e}"))?;
 
-    *library.0.lock().map_err(|_| "bibliotheque verrouillee")? = result.clone();
-    Ok(result)
+    Ok(library.publish(&activity, result))
 }
 
 /// The half of the library that needs the network: the Steam games the account
@@ -106,7 +126,11 @@ async fn scan_library(app: AppHandle, library: State<'_, Library>) -> Result<Sca
 /// Kept apart from `scan_library` so the grid can paint from disk first. The
 /// store answers are cached, so this is only slow the first time.
 #[tauri::command]
-async fn fetch_catalog(app: AppHandle, library: State<'_, Library>) -> Result<ScanResult, String> {
+async fn fetch_catalog(
+    app: AppHandle,
+    library: State<'_, Library>,
+    activity: State<'_, activity::State>,
+) -> Result<ScanResult, String> {
     let dir = data_dir(&app)?;
     let current = library
         .0
@@ -132,8 +156,7 @@ async fn fetch_catalog(app: AppHandle, library: State<'_, Library>) -> Result<Sc
     .await
     .map_err(|e| format!("recuperation du catalogue interrompue : {e}"))?;
 
-    *library.0.lock().map_err(|_| "bibliotheque verrouillee")? = result.clone();
-    Ok(result)
+    Ok(library.publish(&activity, result))
 }
 
 /// Re-reads the session log and folds it back into the library in memory.
@@ -182,9 +205,40 @@ fn set_game_flag(
 /// Which of the two is decided here rather than by the frontend, so a stale
 /// grid can never ask us to launch something that is no longer on disk.
 #[tauri::command]
-fn launch_game(library: State<'_, Library>, id: String) -> Result<(), String> {
+fn launch_game(
+    app: AppHandle,
+    library: State<'_, Library>,
+    activity: State<'_, activity::State>,
+    id: String,
+) -> Result<(), String> {
     let game = find_game(&library, &id)?;
-    launcher::launch_uri(&game.action_uri).map_err(|e| format!("{e:#}"))
+
+    // Un jeu deja parti n'est pas relance. La grille grise deja son bouton,
+    // mais c'est ici qu'on le sait : le clavier, le menu contextuel et la
+    // palette passent tous par la.
+    if game.installed && !activity.begin_launch(&id) {
+        return Err(format!("{} est deja lance", game.name));
+    }
+
+    match launcher::launch_uri(&game.action_uri) {
+        Ok(()) => {
+            // Le processus n'existe pas encore : la grille doit montrer le
+            // depart tout de suite, sans quoi le second clic arrive avant.
+            announce(&app, &library, &activity);
+            Ok(())
+        }
+        Err(error) => {
+            activity.cancel_launch(&id);
+            Err(format!("{error:#}"))
+        }
+    }
+}
+
+/// Re-publie la bibliotheque telle quelle, pour que la grille reprenne les
+/// etats qui viennent de changer.
+fn announce(app: &AppHandle, library: &Library, activity: &activity::State) {
+    let current = library.0.lock().map(|held| held.clone()).unwrap_or_default();
+    let _ = app.emit("library-changed", library.publish(activity, current));
 }
 
 /// The uninstall flow belongs to the launcher; we only hand the game over.
@@ -323,6 +377,7 @@ pub fn run() {
                 .build(),
         )
         .manage(Library::default())
+        .manage(activity::State::default())
         .setup(|app| {
             // La fenetre principale demarre cachee et c'est le frontend qui la
             // revele quand il a quelque chose a montrer. Si la petite fenetre
@@ -356,15 +411,28 @@ pub fn run() {
             // Watching processes is how every platform gets a play history,
             // so it starts with the app rather than with the first scan.
             if let Ok(dir) = app.path().app_data_dir() {
-                let handle = app.handle().clone();
-                playtime::watch(dir, move || {
-                    handle
-                        .state::<Library>()
-                        .0
-                        .lock()
-                        .map(|library| library.games.clone())
-                        .unwrap_or_default()
-                });
+                let reader = app.handle().clone();
+                let teller = app.handle().clone();
+                playtime::watch(
+                    dir,
+                    move || {
+                        reader
+                            .state::<Library>()
+                            .0
+                            .lock()
+                            .map(|library| library.games.clone())
+                            .unwrap_or_default()
+                    },
+                    // Le meme sondage qui mesure une session dit aussi ce qui
+                    // tourne. La grille l'apprend ici, et seulement quand cela
+                    // change : un jeu lance reste lance pendant des heures.
+                    move |running| {
+                        let state = teller.state::<activity::State>();
+                        if state.observe(running) {
+                            announce(&teller, &teller.state::<Library>(), &state);
+                        }
+                    },
+                );
             }
 
             // A game appearing or disappearing on disk should reach the grid on

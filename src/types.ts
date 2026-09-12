@@ -28,6 +28,14 @@ export interface Game {
   /** Launches the game, or installs it. The backend decides which. */
   actionUri: string;
   /**
+   * Ce que le jeu fait en ce moment.
+   *
+   * `launching` couvre le temps ou le launcher se reveille : le clic est
+   * parti, aucun processus n'existe encore, et c'est precisement la fenetre
+   * pendant laquelle un second clic lancerait le jeu deux fois.
+   */
+  activity: "idle" | "launching" | "running";
+  /**
    * Les autres exemplaires du meme jeu, sur d'autres boutiques.
    *
    * Pose par l'interface, jamais par le backend : la bibliotheque reste une

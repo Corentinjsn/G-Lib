@@ -104,9 +104,14 @@ fn running_games(system: &mut sysinfo::System, games: &[(String, PathBuf)]) -> V
 ///
 /// Runs on its own thread rather than the async runtime: it is a slow poll that
 /// blocks on a system call, and it has to keep going while the UI is idle.
-pub fn watch<F>(data_dir: PathBuf, mut library: F)
+/// `on_running` recoit, a chaque tour, l'ensemble des jeux qui ont un
+/// processus. C'est la meme observation que celle qui mesure les sessions :
+/// la faire deux fois serait deux fois le meme balayage de la table des
+/// processus.
+pub fn watch<F, G>(data_dir: PathBuf, mut library: F, mut on_running: G)
 where
     F: FnMut() -> Vec<Game> + Send + 'static,
+    G: FnMut(std::collections::HashSet<String>) + Send + 'static,
 {
     std::thread::spawn(move || {
         let mut system = sysinfo::System::new();
@@ -124,6 +129,7 @@ where
             }
 
             let running = running_games(&mut system, &installed);
+            on_running(running.iter().cloned().collect());
             let now = now_epoch();
             let mut playtime = load(&data_dir);
             let mut changed = false;
