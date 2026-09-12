@@ -46,6 +46,22 @@ export function inPlatform(game: Game, platform: Platform | null): boolean {
   return platform === null || game.platform === platform;
 }
 
+/**
+ * Ce que dit le bouton d'un jeu, et s'il repond encore.
+ *
+ * Un jeu qui tourne ne se relance pas : le launcher ouvrirait une seconde
+ * fenetre, ou rien du tout selon la boutique, et dans les deux cas le clic
+ * ment. Le meme libelle sert a la carte, au panneau de detail et a la palette,
+ * pour qu'ils ne divergent pas.
+ */
+export function launchLabel(game: Game): { text: string; enabled: boolean } {
+  if (game.activity === "running") return { text: "En cours", enabled: false };
+  if (game.activity === "launching") {
+    return { text: "Lancement…", enabled: false };
+  }
+  return { text: game.installed ? "Jouer" : "Installer", enabled: true };
+}
+
 export function inSelection(
   game: Game,
   selection: Selection,

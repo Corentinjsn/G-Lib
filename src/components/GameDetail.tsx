@@ -1,5 +1,6 @@
 import { coverUrl } from "../lib/api";
 import { formatLastPlayed, formatPlaytime, formatSize } from "../lib/format";
+import { launchLabel } from "../lib/library";
 import { PLATFORM_LABELS, type Game } from "../types";
 import { Kbd } from "./Kbd";
 import { PlatformBadge } from "./PlatformBadge";
@@ -39,6 +40,7 @@ export function GameDetail({
   const size = formatSize(game.sizeOnDisk);
   const lastPlayed = formatLastPlayed(game.lastPlayed);
   const playtime = formatPlaytime(game.playtimeSeconds);
+  const action = launchLabel(game);
 
   return (
     <aside className="flex w-80 shrink-0 flex-col border-l border-line bg-surface-1">
@@ -92,13 +94,20 @@ export function GameDetail({
         <div className="flex gap-2">
           <button
             type="button"
+            disabled={!action.enabled}
             onClick={onLaunch}
-            className="flex flex-1 items-center justify-center gap-2 rounded-md bg-accent py-2 text-sm font-semibold text-surface-0 transition hover:brightness-110"
+            className={`flex flex-1 items-center justify-center gap-2 rounded-md py-2 text-sm font-semibold transition ${
+              action.enabled
+                ? "bg-accent text-surface-0 hover:brightness-110"
+                : "cursor-default border border-line bg-surface-2 text-ink-muted"
+            }`}
           >
-            {game.installed ? "Jouer" : "Installer"}
-            <span className="opacity-70">
-              <Kbd>↵</Kbd>
-            </span>
+            {action.text}
+            {action.enabled && (
+              <span className="opacity-70">
+                <Kbd>↵</Kbd>
+              </span>
+            )}
           </button>
           {game.installed && (
             <button
@@ -145,11 +154,15 @@ export function GameDetail({
           <Field
             label="État"
             value={
-              game.installed
-                ? game.needsUpdate
-                  ? "Installé — mise à jour en attente"
-                  : "Installé"
-                : "Possédé, non installé"
+              game.activity === "running"
+                ? "En cours"
+                : game.activity === "launching"
+                  ? "Lancement…"
+                  : game.installed
+                    ? game.needsUpdate
+                      ? "Installé — mise à jour en attente"
+                      : "Installé"
+                    : "Possédé, non installé"
             }
           />
           {size && <Field label="Taille sur disque" value={size} />}

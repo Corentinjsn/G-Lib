@@ -1,6 +1,7 @@
 import { useState, type MouseEvent } from "react";
 import { coverUrl } from "../lib/api";
 import { PLATFORM_COLORS, PLATFORM_LABELS, type Game } from "../types";
+import { launchLabel } from "../lib/library";
 import { BADGE_BOX, PlatformBadge } from "./PlatformBadge";
 
 interface Props {
@@ -48,6 +49,7 @@ export function GameCard({
 }: Props) {
   const [artBroken, setArtBroken] = useState(false);
   const art = artBroken ? null : coverUrl(game.coverPath);
+  const action = launchLabel(game);
 
   return (
     <div
@@ -55,10 +57,10 @@ export function GameCard({
       role="button"
       tabIndex={0}
       onClick={onSelect}
-      onDoubleClick={onLaunch}
+      onDoubleClick={() => action.enabled && onLaunch()}
       onContextMenu={onContextMenu}
       onKeyDown={(event) => {
-        if (event.key === "Enter") onLaunch();
+        if (event.key === "Enter" && action.enabled) onLaunch();
         if (event.key === " ") {
           event.preventDefault();
           onSelect();
@@ -117,6 +119,21 @@ export function GameCard({
             ↻
           </span>
         )}
+        {/* Un jeu qui tourne le dit sur sa jaquette : c'est ce qu'on cherche
+            des yeux quand on revient a la fenetre. */}
+        {game.activity !== "idle" && (
+          <span
+            title={game.activity === "running" ? "En cours" : "Lancement…"}
+            aria-label={game.activity === "running" ? "En cours" : "Lancement…"}
+            className={`${BADGE_BOX} text-accent`}
+          >
+            <span
+              className={`block size-2 rounded-full bg-accent ${
+                game.activity === "launching" ? "animate-pulse" : ""
+              }`}
+            />
+          </span>
+        )}
         {!game.installed && (
           <span
             title="Possédé, non installé"
@@ -160,17 +177,20 @@ export function GameCard({
         </p>
         <button
           type="button"
+          disabled={!action.enabled}
           onClick={(event) => {
             event.stopPropagation();
             onLaunch();
           }}
-          className={`w-full rounded-md py-1.5 text-xs font-semibold transition hover:brightness-110 ${
-            game.installed
-              ? "bg-accent text-surface-0"
-              : "border border-line bg-surface-2 text-ink"
+          className={`w-full rounded-md py-1.5 text-xs font-semibold transition ${
+            !action.enabled
+              ? "cursor-default border border-line bg-surface-2 text-ink-muted"
+              : game.installed
+                ? "bg-accent text-surface-0 hover:brightness-110"
+                : "border border-line bg-surface-2 text-ink hover:brightness-110"
           }`}
         >
-          {game.installed ? "Jouer" : "Installer"}
+          {action.text}
         </button>
       </div>
     </div>

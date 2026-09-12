@@ -22,6 +22,21 @@ impl Platform {
     }
 }
 
+/// What a game is doing right now.
+///
+/// Never read back from the cache: a game that was running when the
+/// application closed is not running when it opens. It is written there only
+/// because the whole library is.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Activity {
+    #[default]
+    Idle,
+    /// Handed to its launcher; no process yet.
+    Launching,
+    Running,
+}
+
 /// One game in the library, normalized across every platform.
 ///
 /// A game is either installed and launchable, or owned and installable. The
@@ -65,6 +80,10 @@ pub struct Game {
     pub hidden: bool,
     /// Hands the game to its launcher: to play it, or to install it.
     pub action_uri: String,
+    /// Le cache garde ce champ mais ne le relit jamais : au demarrage, rien
+    /// ne tourne encore.
+    #[serde(default, skip_deserializing)]
+    pub activity: Activity,
 }
 
 impl Game {
@@ -92,6 +111,7 @@ impl Game {
             cover_path: None,
             cover_urls: Vec::new(),
             action_uri: action_uri.into(),
+            activity: Activity::Idle,
         }
     }
 
