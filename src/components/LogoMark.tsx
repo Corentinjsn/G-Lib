@@ -65,11 +65,11 @@ export function LogoMark({
         <rect {...card} {...skin} />
         <text
           x="75"
-          y="50"
+          y="48"
           textAnchor="middle"
           dominantBaseline="central"
           fill="#0b0d12"
-          fontSize="58"
+          fontSize="70"
           fontWeight="700"
           fontFamily='"League Spartan Variable", "Segoe UI", system-ui, sans-serif'
         >

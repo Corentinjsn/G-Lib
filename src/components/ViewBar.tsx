@@ -12,6 +12,16 @@ import {
 } from "../types";
 import { PlatformIcon } from "./PlatformIcon";
 
+/**
+ * La boite que partagent les quatre controles de la barre.
+ *
+ * Ils etaient dimensionnes chacun par son contenu — un champ par sa ligne de
+ * texte, un segment par ses boutons, une liste deroulante par la sienne — et
+ * se retrouvaient a trois hauteurs differentes sur la meme rangee. La hauteur
+ * est donc posee une fois ici, et chacun y aligne son contenu.
+ */
+const CONTROL = "h-9 rounded-md border border-line bg-surface-2 text-ink";
+
 interface Props {
   count: number;
   scopeLabel: string;
@@ -73,7 +83,7 @@ export function ViewBar({
           onChange={(event) => onQueryChange(event.target.value)}
           placeholder="Filtrer…"
           aria-label="Filtrer la grille"
-          className="w-full rounded-md border border-line bg-surface-2 py-1.5 pr-8 pl-3 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
+          className={`${CONTROL} w-full pr-8 pl-3 text-sm placeholder:text-ink-faint focus:border-accent focus:outline-none`}
         />
         {/* Ce champ filtre la grille ; le lancement rapide appartient à la
             palette, donc le slot ne porte que la sortie de recherche. */}
@@ -92,14 +102,14 @@ export function ViewBar({
 
       {/* Owned games outnumber installed ones several times over, so this
           decides what the whole grid is about. */}
-      <div className="flex shrink-0 rounded-md border border-line bg-surface-2 p-0.5">
+      <div className={`${CONTROL} flex shrink-0 items-center p-0.5`}>
         {INSTALL_FILTERS.map((filter) => (
           <button
             key={filter}
             type="button"
             onClick={() => onInstallFilterChange(filter)}
             title={`${INSTALL_FILTER_LABELS[filter]} — ${installCounts[filter]} jeux`}
-            className={`rounded px-2.5 py-1 text-[11px] font-medium transition ${
+            className={`flex h-full items-center rounded px-2.5 text-[11px] font-medium transition ${
               installFilter === filter
                 ? "bg-surface-3 text-ink"
                 : "text-ink-muted hover:text-ink"
@@ -114,7 +124,7 @@ export function ViewBar({
           la moitie de la barre, et un logo se reconnait plus vite qu'un mot a
           cette taille. Un second clic sur la meme boutique revient a toutes,
           ce qui evite un bouton « Toutes » de plus. */}
-      <div className="flex shrink-0 items-center gap-0.5 rounded-md border border-line bg-surface-2 p-0.5">
+      <div className={`${CONTROL} flex shrink-0 items-center gap-0.5 p-0.5`}>
         {PLATFORMS.map((entry) => {
           const active = platform === entry;
           const count = platformCounts[entry];
@@ -130,7 +140,7 @@ export function ViewBar({
                   ? `${PLATFORM_LABELS[entry]} — tout afficher`
                   : `${PLATFORM_LABELS[entry]} — ${count} jeux`
               }
-              className={`flex size-7 items-center justify-center rounded transition disabled:opacity-30 ${
+              className={`flex h-full w-7 items-center justify-center rounded transition disabled:opacity-30 ${
                 active ? "bg-surface-3" : "hover:bg-surface-3"
               }`}
               style={{
@@ -150,7 +160,7 @@ export function ViewBar({
         onChange={(event) => onSortChange(event.target.value as SortKey)}
         aria-label="Trier"
         title="Trier"
-        className="shrink-0 rounded-md border border-line bg-surface-2 px-2 py-1.5 text-xs text-ink focus:border-accent focus:outline-none"
+        className={`${CONTROL} shrink-0 px-2 text-xs focus:border-accent focus:outline-none`}
       >
         {Object.entries(SORT_LABELS).map(([value, label]) => (
           <option key={value} value={value}>
