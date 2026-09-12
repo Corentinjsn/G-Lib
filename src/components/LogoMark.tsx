@@ -1,19 +1,17 @@
 /**
- * La marque de G-Lib, dessinee plutot que chargee.
+ * The G-Lib mark.
  *
- * `public/GAMLIB.png` is one flat image, so its three cards cannot move
- * independently. Rebuilt as SVG they can: during an update they fan open and
- * closed while the G holds the centre, which is the difference between an
- * application that is working and one that looks stuck.
+ * The outline below is `public/GAMLIB.svg` verbatim -- the traced original,
+ * not a reconstruction. Three attempts at redrawing it by hand each came close
+ * and stayed wrong; the drawing is the drawing, so it is used as such.
  *
- * Colours are the logo's own two, swapped for a dark background: the cards take
- * the cream that the G has in the original, and the G takes the ground colour —
- * exactly what the application icon does with its badge.
+ * One consequence, accepted: it is a single path, so the three cards can no
+ * longer fan open and closed during an update. The mark still breathes and
+ * still carries its halo, which is what says the application is working.
  *
- * The cards follow `currentColor`, so a caller sets the tone with a text colour
- * and the mark sits at the same weight as whatever surrounds it. The stroke and
- * the G stay on the ground colour: they are what keeps the three cards apart at
- * any size.
+ * The G is a hole rather than a shape, so it shows whatever sits behind the
+ * mark. The cards follow `currentColor`, so a caller sets the tone with a text
+ * colour and the mark weighs the same as what surrounds it.
  */
 export function LogoMark({
   className = "size-24",
@@ -22,59 +20,48 @@ export function LogoMark({
   className?: string;
   animated?: boolean;
 }) {
-  const skin = { fill: "currentColor", stroke: "#0b0d12", strokeWidth: 3 };
-
-  // Three identical cards. Not "roughly identical": the numbers below are
-  // measured off public/GAMLIB.png rather than judged by eye, because every
-  // attempt at judging it by eye was wrong.
-  //
-  //   card       283 x 458 in the original -> 0.62, hence 56 x 90
-  //   corners    the flat top spans 120 of the 283 -> radius 0.29 of the
-  //              width, the same on all three. The middle card only looks
-  //              rounder because the other two are tilted.
-  //   the G      half the height of its card, three quarters of its width
-  //
-  // The fan is 13 degrees, not 21: the top edge of a side card drops 39
-  // points over 168 in the original, which is the angle it is drawn at.
-  const card = { x: 47, y: 8, width: 56, height: 90, rx: 16 };
-
   return (
-    // The frame is tight on the drawing. The previous one left a quarter of
-    // its width empty, so the mark came out a fifth smaller than the original
-    // at the same box size -- the original fills its own frame at 95 %.
     <svg
-      viewBox="14 4 122 105"
+      // Frame tight on the drawing, which fills x 14..605, y 0..488 of the
+      // file's 623 x 519.
+      viewBox="10 -4 600 497"
       role="img"
       aria-label="G-Lib"
-      className={className}
+      className={`${className} ${animated ? "logo-breathe" : ""}`}
     >
       <title>G-Lib</title>
-      {/* The pivot sits far below the cards -- turning about a distant point
-          spreads them sideways rather than tilting them on the spot. Its
-          height is what sets how far they reach: 142 puts the outer tip of
-          each card where the original has it. It has to match the
-          transform-origin in index.css, which animates the same shapes. */}
-      <g className={animated ? "logo-card-left" : undefined}>
-        <rect {...card} {...skin} transform="rotate(-13 75 142)" />
-      </g>
-      <g className={animated ? "logo-card-right" : undefined}>
-        <rect {...card} {...skin} transform="rotate(13 75 142)" />
-      </g>
-
-      <g className={animated ? "logo-card-front" : undefined}>
-        <rect {...card} {...skin} />
-        <text
-          x="75"
-          y="48"
-          textAnchor="middle"
-          dominantBaseline="central"
-          fill="#0b0d12"
-          fontSize="70"
-          fontWeight="700"
-          fontFamily='"League Spartan Variable", "Segoe UI", system-ui, sans-serif'
-        >
-          G
-        </text>
+      {/* The transform is the traced file's own: tenths of a unit, Y flipped. */}
+      <g
+        transform="translate(0,519) scale(0.1,-0.1)"
+        fill="currentColor"
+        stroke="none"
+      >
+        <path
+          d="
+  M2525 5183 c-68 -10 -188 -45 -263 -76 -213 -91 -398 -279 -488 -500 -68
+  -167 -64 -72 -64 -1715 0 -1449 1 -1489 20 -1570 87 -364 375 -636 749
+  -707 l76 -15 -105 5 c-409 17 -763 312 -860 717 -19 81 -20 120 -20 1573
+  0 1453 1 1492 20 1573 48 201 167 390 323 514 35 27 43 38 30 38 -22 0
+  -1001 -174 -1078 -191 -80 -18 -194 -67 -275 -117 -102 -63 -241 -205
+  -305 -313 -82 -140 -135 -327 -135 -482 0 -41 476 -2741 510 -2894 77
+  -342 388 -630 748 -693 82 -14 228 -14 317 0 212 34 922 163 992 180 99
+  24 197 66 188 80 -4 7 49 10 158 10 160 0 166 -1 228 -29 110 -50 190
+  -68 723 -166 574 -105 626 -110 793 -76 98 20 217 68 311 123 87 51 259
+  228 310 319 84 151 86 159 359 1629 252 1357 257 1388 257 1515 0 258
+  -90 473 -273 656 -145 145 -286 217 -517 264 -159 32 -988 184 -991 182
+  -1 -1 29 -28 67 -59 128 -107 241 -287 292 -463 l23 -80 0 -1520 0 -1520
+  -23 -80 c-86 -301 -315 -544 -607 -645 -76 -26 -213 -50 -279 -49 l-51 1
+  72 13 c352 64 620 301 739 655 l29 85 0 1540 0 1540 -29 85 c-90 268
+  -253 458 -491 571 -201 96 -176 93 -855 95 -327 1 -608 0 -625 -3z m825
+  -1088 c160 -26 310 -84 430 -165 75 -51 212 -180 208 -196 -4 -16 -309
+  -354 -319 -354 -5 0 -22 20 -38 44 -67 97 -187 180 -308 211 -90 23 -225
+  19 -305 -9 -179 -63 -339 -264 -382 -478 -20 -99 -20 -269 0 -361 52
+  -240 243 -450 443 -487 276 -51 547 116 568 352 l6 58 -252 0 -251 0 0
+  195 0 195 510 0 510 0 0 -228 c0 -256 -9 -312 -74 -462 -129 -299 -409
+  -508 -764 -570 -139 -24 -381 -7 -509 36 -291 98 -545 343 -663 639 -153
+  381 -98 849 137 1160 219 290 496 431 848 434 61 1 153 -6 205 -14z
+"
+        />
       </g>
     </svg>
   );
