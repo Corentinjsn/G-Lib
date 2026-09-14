@@ -31,6 +31,13 @@ const REFRESH_MS = 120_000;
 type Tab = "steam" | "epic";
 
 /**
+ * Epic sign-in is written but not switched on: the relay needs an Epic Account
+ * Services application, which needs a verified domain. Until then the window
+ * shows Steam alone rather than a tab that leads to an error page.
+ */
+const EPIC_ENABLED = false;
+
+/**
  * The library's title bar, cut down: this window only minimizes and closes.
  * Dragging and the buttons behave as they do in the main window.
  */
@@ -341,7 +348,7 @@ export function FriendsWindow() {
   const loadSteam = useCallback(() => void steamFriends().then(setSteamAnswer), []);
   const loadEpic = useCallback(() => void epicFriends().then(setEpicAnswer), []);
   usePolling(Boolean(steam), loadSteam);
-  usePolling(Boolean(epic), loadEpic);
+  usePolling(EPIC_ENABLED && Boolean(epic), loadEpic);
 
   const steamSign = useSignIn(steamSignIn, setSteam);
   const epicSign = useSignIn(epicSignIn, setEpic);
@@ -351,9 +358,15 @@ export function FriendsWindow() {
   return (
     <div className="flex h-screen flex-col bg-surface-0 text-ink">
       <WindowBar />
-      <Tabs tab={tab} onTab={setTab} signedIn={{ steam: Boolean(steam), epic: Boolean(epic) }} />
+      {EPIC_ENABLED && (
+        <Tabs
+          tab={tab}
+          onTab={setTab}
+          signedIn={{ steam: Boolean(steam), epic: Boolean(epic) }}
+        />
+      )}
 
-      {loading ? null : tab === "steam" ? (
+      {loading ? null : tab === "steam" || !EPIC_ENABLED ? (
         steam ? (
           <>
             <AccountHeader

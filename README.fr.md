@@ -32,6 +32,11 @@ pas. Les prix viennent d'IsThereAnyDeal — une trentaine de boutiques d'un coup
 avec la remise et le plus bas historique — plus Instant Gaming, qu'aucun
 comparateur ne couvre.
 
+**Montre qui joue.** Une petite fenêtre d'amis, comme celle de Steam, liste
+vos amis Steam en jeu, en ligne et hors ligne. La connexion se fait sur la page
+officielle de Steam : G-Lib ne voit jamais votre mot de passe et vous ne créez
+aucune clé d'API.
+
 **Répond au clavier.** `Ctrl+K` ouvre une palette qui cherche dans toute la
 bibliothèque quels que soient les filtres, lance à l'Entrée, et ouvre les
 actions du jeu au `Tab`. La grille accepte les flèches ou `hjkl`, `gg`/`G`,
@@ -59,6 +64,23 @@ gratuite.
 
 `igdb.json` contient `{ "clientId": "...", "clientSecret": "..." }`. Les clés
 vivent hors du dépôt, délibérément.
+
+## Confidentialité et sécurité
+
+- **La bibliothèque reste sur votre machine.** Le scan lit les fichiers des
+  launchers et le registre ; rien sur vos jeux n'est envoyé nulle part.
+- **La connexion est facultative** et ne sert qu'à la fenêtre d'amis. Elle se
+  fait sur la page officielle de la boutique, dans une fenêtre privée sans
+  accès à l'application.
+- **Aucun secret dans l'installeur.** La clé de l'API Steam vit dans un petit
+  relais ([`relay/`](relay/)), un Worker Cloudflare qui vérifie votre
+  connexion auprès de Steam et ne répond jamais que sur votre propre compte.
+  Il ne stocke rien.
+- **Votre jeton de connexion** est rangé dans le Gestionnaire d'identifiants
+  Windows, pas dans un fichier. *Déconnexion* l'efface.
+- **Chaque fenêtre ne fait que son travail** : la fenêtre d'amis n'a aucun
+  accès à la bibliothèque, et les liens de boutique n'ouvrent que des sites
+  connus.
 
 ## Construire soi-même
 
