@@ -19,7 +19,7 @@ import { TitleBar } from "./components/TitleBar";
 import { ViewBar } from "./components/ViewBar";
 import { useCollections } from "./hooks/useCollections";
 import { useGridKeys } from "./hooks/useGridKeys";
-import { useLibrary } from "./hooks/useLibrary";
+import { useLibrary, type CatalogProgress } from "./hooks/useLibrary";
 import { useUpdate } from "./hooks/useUpdate";
 import {
   finishSplash,
@@ -64,6 +64,15 @@ const SPLASH_FLOOR_MS = 900;
 /** L'instant ou le module est evalue, au plus pres de l'ouverture. */
 const STARTED_AT = Date.now();
 
+/** The third startup step, with a count once there is one to give. */
+function catalogLabel(progress: CatalogProgress | null): string {
+  if (!progress || progress.total === 0) return "Catalogue en ligne";
+  const count = `${progress.done} / ${progress.total}`;
+  return progress.stage === "catalog"
+    ? `Catalogue en ligne · ${count}`
+    : `Jaquettes · ${count}`;
+}
+
 /** Which naming prompt is open, if any. */
 type Dialog =
   | { mode: "create"; gameId?: string }
@@ -86,7 +95,8 @@ function EmptyState({ scanning }: { scanning: boolean }) {
 }
 
 export default function App() {
-  const { result, status, error, refresh, applyResult } = useLibrary();
+  const { result, status, error, firstRun, progress, refresh, applyResult } =
+    useLibrary();
 
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortKey>("name");
@@ -114,10 +124,26 @@ export default function App() {
 
   /* An update found at startup installs itself before anything is shown: the
      restart would throw the library away anyway. The splash otherwise waits on
-     the first scan and on the update check. */
+     the first scan and on the update check.
+
+     On a machine that has never been scanned it also waits for the online
+     catalogue and the covers. The grid would otherwise open half empty and
+     fill in under the user's hands for a minute or two: owned Steam games
+     appearing, cards reordering, placeholders turning into art. Later starts
+     paint the cache at once and let that work happen in the background. */
   const updating =
     update.phase === "downloading" || update.phase === "installed";
-  const ready = !updating && result !== null && update.phase !== "checking";
+  const syncing = status !== "idle";
+  /* Once open, the library stays open: a later sync on a first run must not
+     bring the startup screen back. */
+  const [opened, setOpened] = useState(false);
+  const startupDone =
+    result !== null && update.phase !== "checking" && !(firstRun && syncing);
+  useEffect(() => {
+    if (startupDone) setOpened(true);
+  }, [startupDone]);
+  const ready = !updating && (opened || startupDone);
+  const catalogProgress = status === "fetching-catalog" ? progress : null;
   const splashSteps: SplashStep[] = [
     {
       label: "Vérification des mises à jour",
@@ -128,7 +154,7 @@ export default function App() {
       state: result !== null ? "done" : "active",
     },
     {
-      label: "Catalogue en ligne",
+      label: catalogLabel(catalogProgress),
       state:
         status === "fetching-catalog"
           ? "active"

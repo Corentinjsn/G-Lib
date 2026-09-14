@@ -202,7 +202,13 @@ fn fetch_one(client: &reqwest::blocking::Client, source: &CoverSource, target: &
 }
 
 /// Fill in any missing covers, then attach every cached path.
-pub fn fetch_missing(games: &mut [Game], covers_dir: &Path) {
+///
+/// `progress(done, total)` is told after each batch of downloads.
+pub fn fetch_missing(
+    games: &mut [Game],
+    covers_dir: &Path,
+    mut progress: impl FnMut(usize, usize),
+) {
     if std::fs::create_dir_all(covers_dir).is_err() {
         return;
     }
@@ -244,6 +250,8 @@ pub fn fetch_missing(games: &mut [Game], covers_dir: &Path) {
 
     if !tasks.is_empty() {
         if let Some(client) = steam_store::client() {
+            let mut done = 0;
+            progress(done, tasks.len());
             for chunk in tasks.chunks(PARALLEL_FETCHES) {
                 std::thread::scope(|scope| {
                     for (source, target) in chunk {
@@ -251,6 +259,8 @@ pub fn fetch_missing(games: &mut [Game], covers_dir: &Path) {
                         scope.spawn(move || fetch_one(client, source, target));
                     }
                 });
+                done += chunk.len();
+                progress(done, tasks.len());
             }
         }
     }

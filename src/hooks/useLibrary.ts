@@ -5,6 +5,13 @@ import type { ScanResult } from "../types";
 
 type Status = "idle" | "scanning" | "fetching-catalog";
 
+/** Where the network half of a sync is, as the backend reports it. */
+export interface CatalogProgress {
+  stage: "catalog" | "covers";
+  done: number;
+  total: number;
+}
+
 /**
  * Floor between two focus-driven rescans. Alt-tabbing is frequent and a scan
  * touches a few dozen files; once every ten seconds is plenty to catch a game
@@ -27,6 +34,10 @@ export function useLibrary() {
   const [result, setResult] = useState<ScanResult | null>(null);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
+  /* No cached library means nothing has ever been scanned on this machine.
+     Unknown (null) until the cache has been read. */
+  const [firstRun, setFirstRun] = useState<boolean | null>(null);
+  const [progress, setProgress] = useState<CatalogProgress | null>(null);
   const running = useRef(false);
   const lastScan = useRef(0);
 
@@ -45,6 +56,7 @@ export function useLibrary() {
       setError(String(cause));
     } finally {
       setStatus("idle");
+      setProgress(null);
       running.current = false;
     }
   }, []);
@@ -54,9 +66,13 @@ export function useLibrary() {
     void (async () => {
       try {
         const cached = await loadCachedLibrary();
-        if (cached && !cancelled) setResult(cached);
+        if (!cancelled) {
+          if (cached) setResult(cached);
+          setFirstRun(!cached);
+        }
       } catch {
         // A missing or unreadable cache is normal on first run.
+        if (!cancelled) setFirstRun(true);
       }
       if (!cancelled) await refresh();
     })();
@@ -97,5 +113,22 @@ export function useLibrary() {
     };
   }, []);
 
-  return { result, status, error, refresh, applyResult: setResult };
+  useEffect(() => {
+    const stop = listen<CatalogProgress>("catalog-progress", (event) =>
+      setProgress(event.payload),
+    );
+    return () => {
+      void stop.then((unlisten) => unlisten());
+    };
+  }, []);
+
+  return {
+    result,
+    status,
+    error,
+    firstRun,
+    progress,
+    refresh,
+    applyResult: setResult,
+  };
 }
