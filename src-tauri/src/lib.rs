@@ -366,6 +366,13 @@ fn open_store_url(url: String) -> Result<(), String> {
     launcher::open_store_url(&url).map_err(|e| format!("{e:#}"))
 }
 
+/// Opens the place where a store takes a game key: Steam's activation dialog,
+/// Epic's and EA's redeem pages, the Ubisoft Connect client.
+#[tauri::command]
+fn open_redeem(store: String) -> Result<(), String> {
+    launcher::open_redeem(&store).map_err(|e| format!("{e:#}"))
+}
+
 /// Passe de la fenetre de demarrage a l'application.
 ///
 /// L'ordre compte : on montre la principale avant de fermer la petite, sinon
@@ -501,7 +508,8 @@ pub fn run() {
             search_market,
             market_home,
             store_offers,
-            open_store_url
+            open_store_url,
+            open_redeem
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

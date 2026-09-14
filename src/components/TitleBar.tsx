@@ -11,6 +11,7 @@ interface Props {
   onInstallUpdate: () => void;
   syncing: boolean;
   onSync: () => void;
+  onRedeem: () => void;
   /** Unix epoch seconds of the last completed sync, if any. */
   syncedAt: number | null;
 }
@@ -42,6 +43,27 @@ function RefreshIcon() {
     >
       <path d="M20 11a8 8 0 1 0-1.8 6" />
       <path d="M20 4v7h-7" />
+    </svg>
+  );
+}
+
+/** A key, for redeeming one. */
+function KeyIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-[15px]"
+    >
+      <circle cx="7.5" cy="15.5" r="4.5" />
+      <path d="m10.7 12.3 9.3-9.3" />
+      <path d="m16 7 3 3" />
+      <path d="m18.5 4.5 2 2" />
     </svg>
   );
 }
@@ -183,6 +205,7 @@ export function TitleBar({
   onInstallUpdate,
   syncing,
   onSync,
+  onRedeem,
   syncedAt,
 }: Props) {
   const [maximized, setMaximized] = useState(false);
@@ -231,6 +254,16 @@ export function TitleBar({
             action qu'on declenche rarement — la synchronisation se fait au
             demarrage et sur detection de changement. Reduit a son icone, il
             reste a portee sans prendre de place. */}
+        <button
+          type="button"
+          onClick={onRedeem}
+          aria-label="Activer une clé"
+          title="Activer une clé de jeu"
+          className="flex h-8 w-11 items-center justify-center text-ink-muted transition hover:text-ink"
+        >
+          <KeyIcon />
+        </button>
+
         <button
           type="button"
           onClick={onSync}

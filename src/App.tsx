@@ -12,6 +12,7 @@ import { GameDetail } from "./components/GameDetail";
 import { GameGrid } from "./components/GameGrid";
 import { Market } from "./components/Market";
 import { NameDialog } from "./components/NameDialog";
+import { RedeemDialog } from "./components/RedeemDialog";
 import { Palette, type PaletteAction } from "./components/Palette";
 import { Sidebar } from "./components/Sidebar";
 import { Splash } from "./components/Splash";
@@ -24,6 +25,7 @@ import { useUpdate } from "./hooks/useUpdate";
 import {
   finishSplash,
   launchGame,
+  openRedeem,
   openInstallDir,
   setGameFlag,
   uninstallGame,
@@ -38,6 +40,7 @@ import {
   selectGames,
   universe,
 } from "./lib/library";
+import { arrivals } from "./lib/activation";
 import { SPLASH_EVENT, type SplashState, type SplashStep } from "./lib/splash";
 import {
   INSTALL_FILTER_LABELS,
@@ -63,6 +66,10 @@ const SPLASH_FLOOR_MS = 900;
 
 /** L'instant ou le module est evalue, au plus pres de l'ouverture. */
 const STARTED_AT = Date.now();
+
+/** How often, and how long, the library resyncs after a key is redeemed. */
+const KEY_WATCH_EVERY_MS = 20_000;
+const KEY_WATCH_FOR_MS = 5 * 60_000;
 
 /** The third startup step, with a count once there is one to give. */
 function catalogLabel(progress: CatalogProgress | null): string {
@@ -111,6 +118,7 @@ export default function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [dialog, setDialog] = useState<Dialog | null>(null);
+  const [redeemOpen, setRedeemOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   /* La boutique prend la place de la grille plutot que de s'ouvrir par-dessus :
@@ -582,12 +590,63 @@ export default function App() {
     // A context menu, a dialog or the palette owns the keyboard while it is
     // open; the palette runs its own motions over its own results. La
     // boutique a son propre champ et sa propre grille.
-    enabled: menu === null && dialog === null && !paletteOpen && !market,
+    enabled:
+      menu === null &&
+      dialog === null &&
+      !redeemOpen &&
+      !paletteOpen &&
+      !market,
   });
 
   // La barre de titre est rendue avant tout le reste, y compris pendant le
   // splash : la fenetre n'a plus de decoration systeme, donc c'est le seul
   // endroit d'ou on peut la deplacer ou la fermer.
+  /* After a key is taken to its store, the game appears in the launcher's
+     files some seconds to a minute later. Rather than asking for a manual sync,
+     the library resyncs on its own until the game shows up, for a while. */
+  const [keyWatch, setKeyWatch] = useState<{
+    before: Set<string>;
+    until: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!keyWatch) return;
+    const timer = setInterval(() => {
+      if (Date.now() > keyWatch.until) {
+        setKeyWatch(null);
+        return;
+      }
+      void refresh();
+    }, KEY_WATCH_EVERY_MS);
+    return () => clearInterval(timer);
+  }, [keyWatch, refresh]);
+
+  useEffect(() => {
+    if (!keyWatch || !result) return;
+    const added = arrivals(keyWatch.before, result.games);
+    if (added.length === 0) return;
+    setKeyWatch(null);
+    setToast(
+      added.length === 1
+        ? `${added[0].name} est arrivé dans votre bibliothèque.`
+        : `${added.length} jeux sont arrivés dans votre bibliothèque.`,
+    );
+  }, [keyWatch, result]);
+
+  const redeem = async (store: Platform) => {
+    try {
+      await openRedeem(store);
+    } catch (cause) {
+      setToast(`Impossible d'ouvrir ${PLATFORM_LABELS[store]} : ${cause}`);
+      return false;
+    }
+    setKeyWatch({
+      before: new Set(allGames.map((game) => game.id)),
+      until: Date.now() + KEY_WATCH_FOR_MS,
+    });
+    return true;
+  };
+
   const sync = () => {
     void refresh();
     void update.checkNow();
@@ -606,6 +665,7 @@ export default function App() {
       onInstallUpdate={() => void update.install()}
       syncing={status !== "idle"}
       onSync={sync}
+      onRedeem={() => setRedeemOpen(true)}
       syncedAt={result?.scannedAt ?? null}
     />
   );
@@ -735,6 +795,14 @@ export default function App() {
           confirmLabel={dialog.mode === "rename" ? "Renommer" : "Créer"}
           onCancel={() => setDialog(null)}
           onConfirm={(name) => void confirmDialog(name)}
+        />
+      )}
+
+      {redeemOpen && (
+        <RedeemDialog
+          watching={keyWatch !== null}
+          onClose={() => setRedeemOpen(false)}
+          onRedeem={redeem}
         />
       )}
 
