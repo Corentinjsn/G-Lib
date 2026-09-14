@@ -12,6 +12,7 @@ interface Props {
   syncing: boolean;
   onSync: () => void;
   onRedeem: () => void;
+  onFriends: () => void;
   /** Unix epoch seconds of the last completed sync, if any. */
   syncedAt: number | null;
 }
@@ -43,6 +44,27 @@ function RefreshIcon() {
     >
       <path d="M20 11a8 8 0 1 0-1.8 6" />
       <path d="M20 4v7h-7" />
+    </svg>
+  );
+}
+
+/** Two heads: the friends window. */
+function FriendsIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-[15px]"
+    >
+      <circle cx="9" cy="8" r="3.5" />
+      <path d="M2.5 20a6.5 6.5 0 0 1 13 0" />
+      <path d="M16 4.6a3.5 3.5 0 0 1 0 6.8" />
+      <path d="M18.5 14.2A6.5 6.5 0 0 1 21.5 20" />
     </svg>
   );
 }
@@ -145,7 +167,7 @@ function DownloadProgress({ progress }: { progress: number }) {
 }
 
 /** The three Windows glyphs, at the size the system draws them. */
-function ControlIcon({
+export function ControlIcon({
   shape,
 }: {
   shape: "min" | "max" | "restore" | "close";
@@ -206,6 +228,7 @@ export function TitleBar({
   syncing,
   onSync,
   onRedeem,
+  onFriends,
   syncedAt,
 }: Props) {
   const [maximized, setMaximized] = useState(false);
@@ -254,6 +277,16 @@ export function TitleBar({
             action qu'on declenche rarement — la synchronisation se fait au
             demarrage et sur detection de changement. Reduit a son icone, il
             reste a portee sans prendre de place. */}
+        <button
+          type="button"
+          onClick={onFriends}
+          aria-label="Amis"
+          title="Amis"
+          className="flex h-8 w-11 items-center justify-center text-ink-muted transition hover:text-ink"
+        >
+          <FriendsIcon />
+        </button>
+
         <button
           type="button"
           onClick={onRedeem}

@@ -3,9 +3,12 @@ mod artwork;
 mod binvdf;
 mod cache;
 mod collections;
+mod credential_store;
 mod credentials;
+mod epic_account;
 mod epic_promotions;
 mod flags;
+mod friends;
 mod itad;
 mod igdb;
 mod launcher;
@@ -13,7 +16,9 @@ mod market;
 mod models;
 mod offers;
 mod playtime;
+mod relay;
 mod scanners;
+mod steam_account;
 mod steam_store;
 mod store_home;
 mod vdf;
@@ -392,7 +397,6 @@ fn finish_splash(app: AppHandle) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         // Reopening at the size and place it was left is the kind of thing a
@@ -422,6 +426,17 @@ pub fn run() {
             // revele quand il a quelque chose a montrer. Si la petite fenetre
             // n'existe pas — configuration changee, creation refusee — plus
             // personne ne la revelerait : on la montre tout de suite.
+            // The friends window is an accessory: closing the library quits,
+            // whatever else is still open.
+            if let Some(main) = app.get_webview_window("main") {
+                let quit = app.handle().clone();
+                main.on_window_event(move |event| {
+                    if matches!(event, tauri::WindowEvent::Destroyed) {
+                        quit.exit(0);
+                    }
+                });
+            }
+
             match app.get_webview_window("splash") {
                 None => {
                     if let Some(main) = app.get_webview_window("main") {
@@ -429,6 +444,7 @@ pub fn run() {
                     }
                 }
                 Some(splash) => {
+
                     // Fermer la fenetre de demarrage quand elle est seule a
                     // l'ecran, c'est renoncer au demarrage. Sans cela le
                     // processus survivrait sans aucune fenetre visible.
@@ -509,7 +525,15 @@ pub fn run() {
             market_home,
             store_offers,
             open_store_url,
-            open_redeem
+            open_redeem,
+            friends::open_friends,
+            friends::accounts,
+            friends::steam_sign_in,
+            friends::steam_sign_out,
+            friends::steam_friends,
+            friends::epic_sign_in,
+            friends::epic_sign_out,
+            friends::epic_friends
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

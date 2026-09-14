@@ -1,0 +1,21 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "friends",
+  "description": "Capability for the friends window: its own sign-ins and friends lists, and nothing of the library.",
+  "windows": [
+    "friends"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:allow-minimize",
+    "core:window:allow-close",
+    "core:window:allow-start-dragging",
+    "allow-accounts",
+    "allow-steam-sign-in",
+    "allow-steam-sign-out",
+    "allow-steam-friends",
+    "allow-epic-sign-in",
+    "allow-epic-sign-out",
+    "allow-epic-friends"
+  ]
+}

@@ -32,6 +32,10 @@ sell. Prices come from IsThereAnyDeal — some thirty shops at once, with the
 discount and the lowest price ever — plus Instant Gaming, which no aggregator
 covers.
 
+**Shows who is playing.** A small friends window, like Steam's, lists your
+Steam friends in game, online and offline. You sign in on Steam's own page;
+G-Lib never sees your password and you never create an API key.
+
 **Answers to the keyboard.** `Ctrl+K` opens a palette that searches the whole
 library whatever the filters, launches on Enter, and opens the game's actions
 on `Tab`. The grid takes arrows or `hjkl`, `gg`/`G`, `Ctrl+D`/`Ctrl+U`.
@@ -57,6 +61,20 @@ G-Lib works with none of these. Each adds a source, and each is free.
 
 `igdb.json` holds `{ "clientId": "...", "clientSecret": "..." }`. Keys live
 outside the repository, deliberately.
+
+## Privacy and security
+
+- **The library stays on your machine.** Scanning reads launcher files and the
+  registry; nothing about your games is sent anywhere.
+- **Signing in is optional** and only used for the friends window. It happens
+  on the store's official page, in a private window with no access to the app.
+- **No secret ships in the installer.** The Steam Web API key lives in a small
+  relay ([`relay/`](relay/)), a Cloudflare Worker that checks your sign-in
+  with Steam and only ever answers about your own account. It stores nothing.
+- **Your sign-in token** is kept in the Windows Credential Manager, not in a
+  file. *Sign out* deletes it.
+- **Each window can only do its own job**: the friends window has no access to
+  your library, and store links only open known store sites.
 
 ## Build it yourself
 

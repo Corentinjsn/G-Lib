@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-steam-sign-in"
+description = "Enables the steam_sign_in command without any pre-configured scope."
+commands.allow = ["steam_sign_in"]
+
+[[permission]]
+identifier = "deny-steam-sign-in"
+description = "Denies the steam_sign_in command without any pre-configured scope."
+commands.deny = ["steam_sign_in"]
