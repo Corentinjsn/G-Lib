@@ -1,5 +1,12 @@
 //! Epic: one JSON `.item` manifest per installed app under ProgramData, plus a
 //! base64-encoded store catalogue holding the cover art.
+//!
+//! A manifest alone does not prove an install. Epic leaves them behind when a
+//! game is removed, or when the drive it lived on is wiped, so a scan that
+//! trusted them showed games that were long gone -- with a Play button that
+//! could only fail. The launcher's own word is `LauncherInstalled.dat`, and
+//! the disk has the last one: the install folder and its executable must both
+//! be there.
 
 use crate::models::{Game, Platform};
 use crate::scanners::clean_title;
@@ -7,16 +14,78 @@ use anyhow::{anyhow, Result};
 use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
+fn program_data() -> PathBuf {
+    PathBuf::from(std::env::var("PROGRAMDATA").unwrap_or_else(|_| r"C:\ProgramData".to_string()))
+}
+
 fn epic_data_dir() -> PathBuf {
-    let program_data =
-        std::env::var("PROGRAMDATA").unwrap_or_else(|_| r"C:\ProgramData".to_string());
-    Path::new(&program_data)
+    program_data()
         .join("Epic")
         .join("EpicGamesLauncher")
         .join("Data")
+}
+
+fn launcher_installed_path() -> PathBuf {
+    program_data()
+        .join("Epic")
+        .join("UnrealEngineLauncher")
+        .join("LauncherInstalled.dat")
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct LauncherInstalled {
+    #[serde(default)]
+    installation_list: Vec<Installation>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct Installation {
+    app_name: String,
+}
+
+/// The app names the launcher considers installed, or `None` when it keeps no
+/// such list -- an older launcher, or one that never ran. `None` means "no
+/// opinion", not "nothing installed": the disk check still applies.
+fn parse_launcher_installed(text: &str) -> Option<HashSet<String>> {
+    let list: LauncherInstalled = serde_json::from_str(text).ok()?;
+    Some(
+        list.installation_list
+            .into_iter()
+            .map(|install| install.app_name)
+            .collect(),
+    )
+}
+
+fn launcher_installed() -> Option<HashSet<String>> {
+    parse_launcher_installed(&std::fs::read_to_string(launcher_installed_path()).ok()?)
+}
+
+/// Epic writes forward slashes, backslashes, or both, depending on version.
+fn windows_path(location: &str) -> PathBuf {
+    PathBuf::from(location.trim().replace('/', "\\"))
+}
+
+/// Whether a manifest describes a game that is really there.
+fn is_present(
+    manifest: &EpicManifest,
+    listed: Option<&HashSet<String>>,
+    exists: impl Fn(&Path) -> bool,
+) -> bool {
+    if listed.is_some_and(|apps| !apps.contains(&manifest.app_name)) {
+        return false;
+    }
+    let dir = windows_path(&manifest.install_location);
+    if !exists(&dir) {
+        return false;
+    }
+    // Some manifests name no executable; the folder is then all there is.
+    manifest.launch_executable.trim().is_empty()
+        || exists(&dir.join(manifest.launch_executable.replace('/', "\\")))
 }
 
 fn manifests_dir() -> PathBuf {
@@ -37,6 +106,8 @@ pub struct EpicManifest {
     pub app_categories: Vec<String>,
     #[serde(default)]
     pub install_size: u64,
+    #[serde(default)]
+    pub launch_executable: String,
     #[serde(rename = "bIsApplication", default)]
     pub is_application: bool,
     #[serde(rename = "bIsIncompleteInstall", default)]
@@ -69,7 +140,7 @@ pub fn game_from_manifest(manifest: &EpicManifest) -> Option<Game> {
         Platform::Epic,
         &manifest.app_name,
         clean_title(&manifest.display_name),
-        PathBuf::from(manifest.install_location.replace('/', "\\")),
+        windows_path(&manifest.install_location),
         launch_uri,
     );
     game.size_on_disk = (manifest.install_size > 0).then_some(manifest.install_size);
@@ -85,6 +156,7 @@ pub fn scan() -> Result<Vec<Game>> {
         )
     })?;
 
+    let listed = launcher_installed();
     let mut games = Vec::new();
     for entry in entries.flatten() {
         let path = entry.path();
@@ -96,6 +168,11 @@ pub fn scan() -> Result<Vec<Game>> {
         };
         // A single unreadable manifest must not sink the whole platform.
         if let Ok(manifest) = serde_json::from_str::<EpicManifest>(&text) {
+            // A leftover manifest is skipped here; if the account still owns
+            // the game, the catalogue brings it back as installable.
+            if !is_present(&manifest, listed.as_ref(), Path::exists) {
+                continue;
+            }
             if let Some(game) = game_from_manifest(&manifest) {
                 games.push(game);
             }
@@ -133,8 +210,14 @@ fn read_catalog() -> Vec<CatalogEntry> {
 }
 
 impl CatalogEntry {
+    /// Epic files expansions under "games" too; what gives them away is the
+    /// base game they point to.
     fn is_game(&self) -> bool {
         self.categories.iter().any(|c| c.path == "games")
+            && self
+                .main_game_item
+                .as_ref()
+                .is_none_or(|main| main.id.is_empty())
     }
 
     /// Epic's CDN resizes on demand; full-size art runs to several megabytes.
@@ -208,6 +291,14 @@ struct CatalogEntry {
     key_images: Vec<CatalogImage>,
     #[serde(default, rename = "releaseInfo")]
     release_info: Vec<CatalogRelease>,
+    #[serde(default, rename = "mainGameItem")]
+    main_game_item: Option<CatalogItemRef>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CatalogItemRef {
+    #[serde(default)]
+    id: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -265,5 +356,75 @@ mod tests {
         let mut manifest: EpicManifest = serde_json::from_str(FRAGPUNK).unwrap();
         manifest.app_categories = vec!["engines".into()];
         assert!(game_from_manifest(&manifest).is_none());
+    }
+
+    const INSTALLED: &str = include_str!("../../tests/fixtures/epic_launcher_installed.dat");
+
+    #[test]
+    fn reads_the_launcher_install_list() {
+        let listed = parse_launcher_installed(INSTALLED).expect("valid list");
+        assert_eq!(listed.len(), 2);
+        assert!(listed.contains("89443d0c5afa4ef586c72445c0399a8b"));
+    }
+
+    #[test]
+    fn a_manifest_the_launcher_forgot_is_not_installed() {
+        // The FragPunk manifest is real, but its game is not in the list.
+        let manifest: EpicManifest = serde_json::from_str(FRAGPUNK).unwrap();
+        let listed = parse_launcher_installed(INSTALLED);
+        assert!(!is_present(&manifest, listed.as_ref(), |_| true));
+    }
+
+    #[test]
+    fn a_missing_folder_is_not_installed() {
+        let manifest: EpicManifest = serde_json::from_str(FRAGPUNK).unwrap();
+        // No list to consult: the disk decides.
+        assert!(!is_present(&manifest, None, |_| false));
+        assert!(is_present(&manifest, None, |_| true));
+    }
+
+    #[test]
+    fn a_folder_without_its_executable_is_not_installed() {
+        let manifest: EpicManifest = serde_json::from_str(FRAGPUNK).unwrap();
+        let only_folder = |path: &Path| path == Path::new(r"F:\FragPunkFgux4");
+        assert!(!is_present(&manifest, None, only_folder));
+    }
+
+    #[test]
+    fn expansions_are_not_games() {
+        let dlc: CatalogEntry = serde_json::from_str(
+            r#"{"id":"d96f","title":"Peril on Gorgon","categories":[{"path":"games"}],
+                "mainGameItem":{"namespace":"rosemallow","id":"fa16"}}"#,
+        )
+        .unwrap();
+        let base: CatalogEntry = serde_json::from_str(
+            r#"{"id":"fa16","title":"The Outer Worlds","categories":[{"path":"games"}],
+                "mainGameItem":{"namespace":"","id":""}}"#,
+        )
+        .unwrap();
+        assert!(!dlc.is_game());
+        assert!(base.is_game());
+    }
+}
+
+/// Diagnostic against this machine's real Epic data, not a unit test:
+/// `cargo test -- --ignored --nocapture epic_on_this_machine`
+#[cfg(test)]
+#[test]
+#[ignore]
+fn epic_on_this_machine() {
+    let mut games = scan().expect("manifests readable");
+    crate::scanners::merge_owned(&mut games, owned_games());
+    games.sort_by(|a, b| b.installed.cmp(&a.installed).then(a.name.cmp(&b.name)));
+    for game in &games {
+        println!(
+            "{} {} {}",
+            if game.installed { "installed" } else { "owned    " },
+            game.name,
+            game.install_dir
+                .as_deref()
+                .map(|dir| dir.display().to_string())
+                .unwrap_or_default()
+        );
     }
 }

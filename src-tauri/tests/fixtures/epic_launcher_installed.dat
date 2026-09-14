@@ -1,0 +1,20 @@
+{
+	"InstallationList": [
+		{
+			"InstallLocation": "F:/Splitgate2",
+			"NamespaceId": "7c5be037103c457a92ffc6e0d911be2e",
+			"ItemId": "44aa99efa3544b42a2a9e35d8e75c311",
+			"ArtifactId": "ac3c07de9a8d4654a6bbed74ade11c41",
+			"AppVersion": "Production-.492430-Win64",
+			"AppName": "ac3c07de9a8d4654a6bbed74ade11c41"
+		},
+		{
+			"InstallLocation": "F:\\WizardofLegend",
+			"NamespaceId": "194cda74f9024d67860202683a3dab18",
+			"ItemId": "24cb36289be34527b528cda87cdc925c",
+			"ArtifactId": "89443d0c5afa4ef586c72445c0399a8b",
+			"AppVersion": "1.23.4a",
+			"AppName": "89443d0c5afa4ef586c72445c0399a8b"
+		}
+	]
+}
