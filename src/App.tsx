@@ -25,6 +25,7 @@ import { useUpdate } from "./hooks/useUpdate";
 import {
   finishSplash,
   launchGame,
+  openFriends,
   openRedeem,
   openInstallDir,
   setGameFlag,
@@ -666,6 +667,9 @@ export default function App() {
       syncing={status !== "idle"}
       onSync={sync}
       onRedeem={() => setRedeemOpen(true)}
+      onFriends={() =>
+        void openFriends().catch((cause) => setToast(String(cause)))
+      }
       syncedAt={result?.scannedAt ?? null}
     />
   );

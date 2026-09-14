@@ -1,0 +1,6 @@
+# The G-Lib relay: Steam sign-in and friends, holding the Steam Web API key so
+# the app never has to. Secrets are set with `wrangler secret put`, never here.
+name = "g-lib-relay"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+workers_dev = true

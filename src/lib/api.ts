@@ -97,3 +97,37 @@ export const setCollectionMembership = (
   gameId: string,
   member: boolean,
 ) => invoke<Collection[]>("set_collection_membership", { id, gameId, member });
+
+export interface SteamProfile {
+  id: string;
+  name: string;
+  avatar: string | null;
+}
+
+export interface SteamFriend {
+  id: string;
+  name: string;
+  avatar: string | null;
+  /** 0 offline, 1 online, 2 busy, 3 away, 4 snooze, 5-6 looking to trade/play. */
+  state: number;
+  game: string | null;
+  profileUrl: string | null;
+}
+
+export type FriendsAnswer =
+  | { status: "ready"; visibility: "public" | "private"; friends: SteamFriend[] }
+  | { status: "signedOut" }
+  | { status: "unavailable"; message: string };
+
+/** Opens the friends window, or brings it forward. */
+export const openFriends = () => invoke<void>("open_friends");
+
+export const accounts = () =>
+  invoke<{ steam: SteamProfile | null }>("accounts");
+
+/** Opens Steam's sign-in page; rejects with "cancelled" if it is closed. */
+export const steamSignIn = () => invoke<SteamProfile>("steam_sign_in");
+
+export const steamSignOut = () => invoke<void>("steam_sign_out");
+
+export const steamFriends = () => invoke<FriendsAnswer>("steam_friends");

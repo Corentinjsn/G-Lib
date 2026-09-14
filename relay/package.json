@@ -1,0 +1,14 @@
+{
+  "name": "g-lib-relay",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250910.0",
+    "wrangler": "^4.131.2"
+  }
+}

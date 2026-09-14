@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "friends",
+  "description": "Capability for the friends window: it listens for sign-in changes and opens profiles in the browser.",
+  "windows": [
+    "friends"
+  ],
+  "permissions": [
+    "core:default"
+  ]
+}
