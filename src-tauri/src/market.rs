@@ -67,6 +67,18 @@ pub struct MarketItem {
     pub screenshots: Vec<String>,
     /// La page Steam du jeu, quand il y en a une.
     pub store_url: Option<String>,
+    /// Set when the item comes from another store's promotions: `price` is
+    /// then that store's price, not Steam's.
+    pub deal: Option<Deal>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Deal {
+    /// `epic`, `ea` or `ubisoft`.
+    pub store: &'static str,
+    /// The offer at that store, already checked against the allow-list.
+    pub url: Option<String>,
 }
 
 /// Les appids que Steam juge pertinents pour ce terme, dans son ordre.
@@ -188,11 +200,12 @@ fn describe(item: &serde_json::Value) -> Option<MarketItem> {
             })
             .unwrap_or_default(),
         store_url: Some(format!("https://store.steampowered.com/app/{appid}/")),
+        deal: None,
     })
 }
 
 /// Decrit une liste d'appids, dans l'ordre demande.
-fn items(client: &reqwest::blocking::Client, appids: &[u32]) -> Vec<MarketItem> {
+pub(crate) fn items(client: &reqwest::blocking::Client, appids: &[u32]) -> Vec<MarketItem> {
     if appids.is_empty() {
         return Vec::new();
     }
@@ -266,6 +279,7 @@ fn from_igdb(game: igdb::IgdbGame) -> MarketItem {
         price: None,
         screenshots: Vec::new(),
         store_url: None,
+        deal: None,
     }
 }
 

@@ -133,6 +133,23 @@ export interface MarketItem {
   screenshots: string[];
   /** La page Steam du jeu, quand il y en a une. */
   storeUrl: string | null;
+  /** Set when the item comes from another store's promotions: `price` is
+      then that store's price, not Steam's. */
+  deal: MarketDeal | null;
+}
+
+export interface MarketDeal {
+  store: Platform;
+  url: string | null;
+}
+
+/** One row of the store's front page. */
+export interface Shelf {
+  id: string;
+  title: string;
+  store: Platform | null;
+  state: "ready" | "empty" | "needsKey" | "unavailable";
+  items: MarketItem[];
 }
 
 /** Ce que le meme jeu coute chez une autre boutique. */

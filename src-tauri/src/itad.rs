@@ -20,6 +20,8 @@ use serde::Serialize;
 
 const LOOKUP: &str = "https://api.isthereanydeal.com/games/lookup/v1";
 const PRICES: &str = "https://api.isthereanydeal.com/games/prices/v3";
+const SHOPS: &str = "https://api.isthereanydeal.com/service/shops/v1";
+const DEALS: &str = "https://api.isthereanydeal.com/deals/v2";
 
 /// Prix retenus par jeu. Au-dela, on liste des boutiques que personne ne lit.
 const CAPACITY: usize = 12;
@@ -45,7 +47,7 @@ pub struct Deals {
 ///
 /// ITAD rend un nombre et un code de monnaie ; l'euro se met derriere, avec
 /// une virgule, et le reste garde son code plutot que d'inventer un symbole.
-fn format(amount: f64, currency: &str) -> String {
+pub(crate) fn format(amount: f64, currency: &str) -> String {
     // Un jeu gratuit a bien un prix chez ITAD, et il vaut zero. « 0,00 € »
     // se lit comme un bug ; le mot se lit comme une information.
     if amount == 0.0 {
@@ -157,9 +159,132 @@ pub fn deals(
     })
 }
 
+/// A discounted game, as a store's promotions list gives it.
+#[derive(Debug, Clone)]
+pub struct TrendingDeal {
+    pub id: String,
+    pub title: String,
+    pub boxart: Option<String>,
+    pub price: Price,
+    pub url: Option<String>,
+}
+
+/// ITAD's numeric id for each of our stores, looked up by name rather than
+/// written down: the names are what `offers::our_store` already knows.
+pub fn shop_ids(client: &reqwest::blocking::Client) -> Vec<(&'static str, u64)> {
+    let Some(list) = client
+        .get(format!("{SHOPS}?country=FR"))
+        .send()
+        .ok()
+        .and_then(|response| response.json::<serde_json::Value>().ok())
+    else {
+        return Vec::new();
+    };
+    list.as_array()
+        .map(|shops| {
+            shops
+                .iter()
+                .filter_map(|shop| {
+                    let store = crate::offers::our_store(shop.get("title")?.as_str()?)?;
+                    Some((store, shop.get("id")?.as_u64()?))
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// What sells at a discount in one shop right now, most talked-about first.
+///
+/// `-trending` rather than the deepest cut: sorted by cut, the list is
+/// artbooks and titles nobody has heard of at 90 %.
+pub fn trending(
+    client: &reqwest::blocking::Client,
+    key: &str,
+    shop: u64,
+    limit: usize,
+) -> Option<Vec<TrendingDeal>> {
+    let url = format!(
+        "{DEALS}?key={}&country=FR&shops={shop}&limit=40&sort=-trending",
+        percent_encode(key)
+    );
+    let value = client
+        .get(&url)
+        .send()
+        .ok()?
+        .error_for_status()
+        .ok()?
+        .json::<serde_json::Value>()
+        .ok()?;
+    Some(parse_trending(&value, limit))
+}
+
+fn parse_trending(value: &serde_json::Value, limit: usize) -> Vec<TrendingDeal> {
+    let Some(list) = value.get("list").and_then(|v| v.as_array()) else {
+        return Vec::new();
+    };
+    list.iter()
+        .filter(|entry| entry.get("type").and_then(|v| v.as_str()) == Some("game"))
+        .filter(|entry| entry.get("mature").and_then(|v| v.as_bool()) != Some(true))
+        .filter_map(|entry| {
+            let deal = entry.get("deal")?;
+            let cut = deal.get("cut").and_then(|v| v.as_i64()).unwrap_or(0);
+            Some(TrendingDeal {
+                id: entry.get("id")?.as_str()?.to_string(),
+                title: entry.get("title")?.as_str()?.trim().to_string(),
+                boxart: entry
+                    .pointer("/assets/boxart")
+                    .and_then(|v| v.as_str())
+                    .map(str::to_string),
+                price: Price {
+                    current: money(deal.get("price")?)?,
+                    original: (cut > 0).then(|| deal.get("regular").and_then(money)).flatten(),
+                    discount: cut,
+                },
+                url: deal
+                    .get("url")
+                    .and_then(|v| v.as_str())
+                    .filter(|url| crate::launcher::is_store_url(url))
+                    .map(str::to_string),
+            })
+        })
+        .take(limit)
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
-    use super::format;
+    use super::{format, parse_trending};
+
+    #[test]
+    fn trending_keeps_games_only() {
+        let value: serde_json::Value = serde_json::from_str(
+            r#"{"list":[
+              {"id":"a","title":"Artbook","type":"dlc","mature":false,
+               "deal":{"price":{"amount":1,"currency":"EUR"},"regular":{"amount":2,"currency":"EUR"},"cut":50}},
+              {"id":"b","title":"SILENT HILL 2","type":"game","mature":false,
+               "assets":{"boxart":"https://assets.isthereanydeal.com/b/boxart.jpg"},
+               "deal":{"price":{"amount":27.99,"currency":"EUR"},"regular":{"amount":69.99,"currency":"EUR"},"cut":60,
+                       "url":"https://itad.link/b/"}},
+              {"id":"c","title":"Adult","type":"game","mature":true,
+               "deal":{"price":{"amount":1,"currency":"EUR"},"regular":{"amount":2,"currency":"EUR"},"cut":50}},
+              {"id":"d","title":"Free","type":"game","mature":false,
+               "deal":{"price":{"amount":0,"currency":"EUR"},"regular":{"amount":24.5,"currency":"EUR"},"cut":100,
+                       "url":"https://evil.example/"}}
+            ]}"#,
+        )
+        .unwrap();
+
+        let deals = parse_trending(&value, 10);
+        assert_eq!(deals.len(), 2);
+        assert_eq!(deals[0].title, "SILENT HILL 2");
+        assert_eq!(deals[0].price.current, "27,99 €");
+        assert_eq!(deals[0].price.original.as_deref(), Some("69,99 €"));
+        assert_eq!(deals[0].url.as_deref(), Some("https://itad.link/b/"));
+        assert_eq!(deals[1].price.current, "Gratuit");
+        // A link outside the allow-list is dropped, not followed.
+        assert_eq!(deals[1].url, None);
+        assert_eq!(parse_trending(&value, 1).len(), 1);
+    }
 
     #[test]
     fn amounts_are_written_the_way_the_country_writes_them() {

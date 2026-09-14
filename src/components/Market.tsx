@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import instantGamingMark from "../assets/instant-gaming.png";
-import { openStoreUrl, searchMarket, storeOffers } from "../lib/api";
+import {
+  marketHome,
+  openStoreUrl,
+  searchMarket,
+  storeOffers,
+} from "../lib/api";
 import { normalize } from "../lib/format";
 import { storeLinks, type StoreLink } from "../lib/stores";
 import {
@@ -10,6 +15,7 @@ import {
   type MarketPrice,
   type Offers,
   type ShopDeal,
+  type Shelf,
 } from "../types";
 import { PlatformIcon } from "./PlatformIcon";
 import { RemoteArt, Skeleton } from "./Skeleton";
@@ -54,7 +60,7 @@ function PriceTag({
   const size = large ? "text-base" : "text-[13px]";
 
   return (
-    <span className="flex items-center gap-2">
+    <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
       {price.discount > 0 && (
         <>
           <span className="rounded bg-[#4c6b22] px-1.5 py-0.5 text-[11px] font-semibold text-[#beee11]">
@@ -74,6 +80,10 @@ function PriceTag({
 function Price({ item, large = false }: { item: MarketItem; large?: boolean }) {
   const size = large ? "text-base" : "text-[13px]";
 
+  // A promotion found at another store carries that store's price.
+  if (item.deal && item.price) {
+    return <PriceTag price={item.price} large={large} />;
+  }
   // Venu du catalogue general : Steam ne le vend pas, donc il n'en donne pas
   // le prix. Le dire vaut mieux qu'un tiret, qui se lit comme une panne.
   if (item.appid === null) {
@@ -398,22 +408,26 @@ function Detail({
               Gaming sont interroges a l'ouverture. EA ne publie rien. */}
           {storeLinks(item).map((link) => {
             const offer = offers?.stores.find((entry) => entry.store === link.id);
+            // The promotion the card came from answers for its own store
+            // until the comparison does.
+            const promo = item.deal?.store === link.id ? item.deal : null;
             const price =
               link.id === "steam"
-                ? item.free
+                ? item.free || item.appid === null
                   ? null
                   : item.price
-                : (offer?.price ?? null);
+                : (offer?.price ?? (promo ? item.price : null));
+            const url = offer?.url ?? promo?.url ?? null;
 
             return (
               <StoreButton
                 key={link.id}
                 // La boutique a souvent nomme la page exacte du jeu ; on la
                 // prefere alors a sa recherche.
-                link={offer?.url ? { ...link, url: offer.url } : link}
+                link={url ? { ...link, url } : link}
                 price={price}
-                loading={link.id !== "steam" && offers === null}
-                exact={link.exact || Boolean(offer?.url)}
+                loading={link.id !== "steam" && offers === null && !price}
+                exact={link.exact || Boolean(url)}
                 onOpen={onOpen}
               />
             );
@@ -455,6 +469,80 @@ function Detail({
   );
 }
 
+/** Why a shelf has no cards, said in its place. */
+const SHELF_NOTES: Record<Exclude<Shelf["state"], "ready">, string> = {
+  empty: "Aucune promo en ce moment.",
+  needsKey:
+    "Ajoutez une clé IsThereAnyDeal pour voir ces promos : cette boutique ne publie pas les siennes.",
+  unavailable: "Boutique injoignable pour l'instant.",
+};
+
+/** Width of a card on a shelf: a little narrower than the grid's. */
+const SHELF_CARD = "w-[150px] shrink-0";
+
+function ShelfRow({
+  shelf,
+  owned,
+  selectedId,
+  onSelect,
+}: {
+  shelf: Shelf;
+  owned: (item: MarketItem) => boolean;
+  selectedId: string | null;
+  onSelect: (item: MarketItem) => void;
+}) {
+  return (
+    <section className="flex flex-col gap-2.5">
+      <h2 className="flex items-center gap-2 px-4 text-sm font-semibold text-ink">
+        {shelf.store && (
+          <span style={{ color: PLATFORM_COLORS[shelf.store] }}>
+            <PlatformIcon platform={shelf.store} className="size-4" />
+          </span>
+        )}
+        {shelf.title}
+      </h2>
+
+      {shelf.state === "ready" ? (
+        // A row, not a grid: each store gets one line, and the page reads as a
+        // list of stores rather than one heap of games.
+        // Padding above leaves room for the hover lift and the selection ring,
+        // which the scroll container would otherwise clip.
+        <div className="flex [scrollbar-width:thin] gap-3 overflow-x-auto px-4 pt-1.5 pb-2">
+          {shelf.items.map((item) => (
+            <div key={item.id} className={`${SHELF_CARD} flex`}>
+              <Card
+                item={item}
+                owned={owned(item)}
+                selected={selectedId === item.id}
+                onSelect={() => onSelect(item)}
+              />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="px-4 text-xs text-ink-faint">
+          {SHELF_NOTES[shelf.state]}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function ShelfSkeleton() {
+  return (
+    <section className="flex flex-col gap-2.5">
+      <Skeleton className="mx-4 h-4 w-32" />
+      <div className="flex gap-3 overflow-hidden px-4 pb-2">
+        {Array.from({ length: 8 }, (_, index) => (
+          <div key={index} className={SHELF_CARD}>
+            <CardSkeleton />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 /**
  * La boutique.
  *
@@ -470,8 +558,25 @@ export function Market({ library, onError }: Props) {
   const [searched, setSearched] = useState(false);
   const [selected, setSelected] = useState<MarketItem | null>(null);
   const field = useRef<HTMLInputElement>(null);
+  /* The front page, shown while nothing is typed. Null until it answers. */
+  const [shelves, setShelves] = useState<Shelf[] | null>(null);
 
   useEffect(() => field.current?.focus(), []);
+
+  useEffect(() => {
+    let cancelled = false;
+    marketHome()
+      .then((found) => {
+        if (!cancelled) setShelves(found);
+      })
+      .catch(() => {
+        // Search still works; the page just has no shelves to offer.
+        if (!cancelled) setShelves([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Ce qu'on possede deja, par nom : la boutique ne connait que Steam, mais
   // un jeu achete chez EA porte le meme titre.
@@ -481,6 +586,8 @@ export function Market({ library, onError }: Props) {
   );
 
   const term = query.trim();
+  const browsing = term.length < MIN_QUERY;
+  const isOwned = (item: MarketItem) => owned.has(normalize(item.name));
 
   useEffect(() => {
     if (term.length < MIN_QUERY) {
@@ -552,7 +659,7 @@ export function Market({ library, onError }: Props) {
               ? "Recherche…"
               : searched
                 ? `${results.length} ${results.length > 1 ? "résultats" : "résultat"}`
-                : "Catalogue Steam"}
+                : "À la une"}
           </span>
         </header>
 
@@ -560,7 +667,37 @@ export function Market({ library, onError }: Props) {
           {/* Une premiere recherche montre des cartes en attente ; une
               recherche qui en suit une autre garde les resultats a l'ecran,
               sans quoi la grille clignoterait a chaque frappe. */}
-          {results.length === 0 && loading ? (
+          {browsing ? (
+            shelves === null ? (
+              <div className="flex flex-col gap-6 py-4">
+                {Array.from({ length: 3 }, (_, index) => (
+                  <ShelfSkeleton key={index} />
+                ))}
+              </div>
+            ) : shelves.length > 0 ? (
+              <div className="flex flex-col gap-6 py-4">
+                {shelves.map((shelf) => (
+                  <ShelfRow
+                    key={shelf.id}
+                    shelf={shelf}
+                    owned={isOwned}
+                    selectedId={selected?.id ?? null}
+                    onSelect={setSelected}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="flex h-full flex-col items-center justify-center gap-2 px-8 text-center">
+                <p className="text-sm text-ink-muted">
+                  Cherchez un jeu par son titre.
+                </p>
+                <p className="max-w-sm text-xs text-ink-faint">
+                  Le catalogue et les prix viennent de Steam. Les liens d'achat
+                  mènent aussi à Epic, EA, Ubisoft et Instant Gaming.
+                </p>
+              </div>
+            )
+          ) : results.length === 0 && loading ? (
             <div className="grid grid-cols-[repeat(auto-fill,170px)] justify-start gap-3 p-4">
               {Array.from({ length: 10 }, (_, index) => (
                 <CardSkeleton key={index} />
@@ -584,17 +721,7 @@ export function Market({ library, onError }: Props) {
             <div className="flex h-full flex-col items-center justify-center gap-2 px-8 text-center">
               {/* La recherche en cours a ses cartes en attente ; ce qui reste
                   ici, c'est le depart et le vide. */}
-              <p className="text-sm text-ink-muted">
-                {searched
-                  ? "Aucun jeu ne correspond."
-                  : "Cherchez un jeu par son titre."}
-              </p>
-              {!searched && (
-                <p className="max-w-sm text-xs text-ink-faint">
-                  Le catalogue et les prix viennent de Steam. Les liens d'achat
-                  mènent aussi à Epic, EA, Ubisoft et Instant Gaming.
-                </p>
-              )}
+              <p className="text-sm text-ink-muted">Aucun jeu ne correspond.</p>
             </div>
           )}
         </div>

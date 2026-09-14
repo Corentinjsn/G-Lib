@@ -58,7 +58,7 @@ pub struct Offers {
 }
 
 /// Le nom d'une boutique chez ITAD, ramene a nos cinq quand c'en est une.
-fn our_store(shop: &str) -> Option<&'static str> {
+pub(crate) fn our_store(shop: &str) -> Option<&'static str> {
     match key(shop).as_str() {
         "steam" => Some("steam"),
         "epicgamestore" | "epicgamesstore" | "epicgames" | "epic" => Some("epic"),
