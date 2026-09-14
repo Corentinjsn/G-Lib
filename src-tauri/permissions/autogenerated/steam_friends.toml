@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-steam-friends"
+description = "Enables the steam_friends command without any pre-configured scope."
+commands.allow = ["steam_friends"]
+
+[[permission]]
+identifier = "deny-steam-friends"
+description = "Denies the steam_friends command without any pre-configured scope."
+commands.deny = ["steam_friends"]

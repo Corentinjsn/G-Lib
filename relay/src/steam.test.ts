@@ -14,6 +14,8 @@ import {
 
 const ORIGIN = "https://relay.example.workers.dev";
 const ID = "76561190000000000";
+/** Just after the nonce in `assertion` was issued. */
+const NOW = Date.parse("2026-09-14T00:01:00Z");
 
 function assertion(overrides: Record<string, string> = {}) {
   return new URLSearchParams({
@@ -42,23 +44,28 @@ describe("loginUrl", () => {
 
 describe("claimedSteamId", () => {
   test("reads the account from a well-formed assertion", () => {
-    expect(claimedSteamId(assertion(), ORIGIN)).toBe(ID);
+    expect(claimedSteamId(assertion(), ORIGIN, NOW)).toBe(ID);
   });
 
   test("refuses an assertion made for another site", () => {
     expect(
-      claimedSteamId(assertion({ "openid.return_to": "https://evil.example/steam/return" }), ORIGIN),
+      claimedSteamId(assertion({ "openid.return_to": "https://evil.example/steam/return" }), ORIGIN, NOW),
     ).toBeNull();
   });
 
+  test("refuses a stale assertion, which would be a replay", () => {
+    expect(claimedSteamId(assertion(), ORIGIN, NOW + 10 * 60_000)).toBeNull();
+    expect(claimedSteamId(assertion({ "openid.response_nonce": "not-a-date" }), ORIGIN, NOW)).toBeNull();
+  });
+
   test("refuses another provider, a mismatched identity or a bad id", () => {
-    expect(claimedSteamId(assertion({ "openid.op_endpoint": "https://evil.example/openid" }), ORIGIN)).toBeNull();
+    expect(claimedSteamId(assertion({ "openid.op_endpoint": "https://evil.example/openid" }), ORIGIN, NOW)).toBeNull();
     expect(
-      claimedSteamId(assertion({ "openid.identity": "https://steamcommunity.com/openid/id/76561190000000001" }), ORIGIN),
+      claimedSteamId(assertion({ "openid.identity": "https://steamcommunity.com/openid/id/76561190000000001" }), ORIGIN, NOW),
     ).toBeNull();
     const bad = "https://steamcommunity.com/openid/id/123";
-    expect(claimedSteamId(assertion({ "openid.claimed_id": bad, "openid.identity": bad }), ORIGIN)).toBeNull();
-    expect(claimedSteamId(assertion({ "openid.mode": "cancel" }), ORIGIN)).toBeNull();
+    expect(claimedSteamId(assertion({ "openid.claimed_id": bad, "openid.identity": bad }), ORIGIN, NOW)).toBeNull();
+    expect(claimedSteamId(assertion({ "openid.mode": "cancel" }), ORIGIN, NOW)).toBeNull();
   });
 });
 

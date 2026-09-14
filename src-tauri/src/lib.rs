@@ -5,6 +5,7 @@ mod cache;
 mod collections;
 mod credential_store;
 mod credentials;
+mod epic_account;
 mod epic_promotions;
 mod flags;
 mod friends;
@@ -15,6 +16,7 @@ mod market;
 mod models;
 mod offers;
 mod playtime;
+mod relay;
 mod scanners;
 mod steam_account;
 mod steam_store;
@@ -395,7 +397,6 @@ fn finish_splash(app: AppHandle) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         // Reopening at the size and place it was left is the kind of thing a
@@ -529,7 +530,10 @@ pub fn run() {
             friends::accounts,
             friends::steam_sign_in,
             friends::steam_sign_out,
-            friends::steam_friends
+            friends::steam_friends,
+            friends::epic_sign_in,
+            friends::epic_sign_out,
+            friends::epic_friends
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

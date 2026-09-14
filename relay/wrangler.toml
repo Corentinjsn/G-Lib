@@ -4,3 +4,11 @@ name = "g-lib-relay"
 main = "src/index.ts"
 compatibility_date = "2026-09-01"
 workers_dev = true
+
+# 30 requests a minute per address: a sign-in and an open friends window use a
+# handful. Past that, the relay answers 429 instead of spending its Steam and
+# Epic quotas.
+[[ratelimits]]
+name = "LIMITER"
+namespace_id = "1001"
+simple = { limit = 30, period = 60 }

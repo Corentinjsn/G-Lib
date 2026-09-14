@@ -122,8 +122,23 @@ export type FriendsAnswer =
 /** Opens the friends window, or brings it forward. */
 export const openFriends = () => invoke<void>("open_friends");
 
+export interface EpicProfile {
+  id: string;
+  name: string;
+}
+
+export interface EpicFriend {
+  id: string;
+  name: string;
+}
+
+export type EpicFriendsAnswer =
+  | { status: "ready"; friends: EpicFriend[] }
+  | { status: "signedOut" }
+  | { status: "unavailable"; message: string };
+
 export const accounts = () =>
-  invoke<{ steam: SteamProfile | null }>("accounts");
+  invoke<{ steam: SteamProfile | null; epic: EpicProfile | null }>("accounts");
 
 /** Opens Steam's sign-in page; rejects with "cancelled" if it is closed. */
 export const steamSignIn = () => invoke<SteamProfile>("steam_sign_in");
@@ -131,3 +146,10 @@ export const steamSignIn = () => invoke<SteamProfile>("steam_sign_in");
 export const steamSignOut = () => invoke<void>("steam_sign_out");
 
 export const steamFriends = () => invoke<FriendsAnswer>("steam_friends");
+
+/** Opens Epic's sign-in page; rejects with "cancelled" if it is closed. */
+export const epicSignIn = () => invoke<EpicProfile>("epic_sign_in");
+
+export const epicSignOut = () => invoke<void>("epic_sign_out");
+
+export const epicFriends = () => invoke<EpicFriendsAnswer>("epic_friends");

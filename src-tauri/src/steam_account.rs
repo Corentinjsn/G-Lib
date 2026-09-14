@@ -2,46 +2,17 @@
 //!
 //! Signing in happens on Steam's own page, in a window G-Lib opens; the
 //! password never passes through the application. What comes back is an
-//! OpenID assertion, which the G-Lib relay checks with Steam before issuing a
-//! token for that one account. The relay holds the Steam Web API key, so the
-//! installer never does (see `relay/` at the root of the repository).
+//! OpenID assertion, which the relay checks with Steam before issuing a token
+//! for that one account.
 
-use crate::credential_store;
+use crate::{credential_store, relay};
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
-
-/// The deployed relay. `GLIB_RELAY_URL` points a development build elsewhere,
-/// such as `wrangler dev`.
-const RELAY: &str = "https://g-lib-relay.workers.dev";
 
 /// Credential Manager entry for the Steam sign-in.
 const STORE_NAME: &str = "steam";
 
-pub fn relay() -> String {
-    std::env::var("GLIB_RELAY_URL")
-        .ok()
-        .filter(|url| !url.is_empty())
-        .unwrap_or_else(|| RELAY.to_string())
-        .trim_end_matches('/')
-        .to_string()
-}
-
-pub fn login_url() -> String {
-    format!("{}/steam/login", relay())
-}
-
-/// Whether a navigation is Steam sending the sign-in window back to the relay.
-/// Compared by origin and path, never by prefix: `…/steam/return.evil` or
-/// another host must not count.
-pub fn is_return(url: &tauri::Url) -> bool {
-    let Ok(relay) = tauri::Url::parse(&relay()) else {
-        return false;
-    };
-    url.scheme() == relay.scheme()
-        && url.host_str() == relay.host_str()
-        && url.port_or_known_default() == relay.port_or_known_default()
-        && url.path() == "/steam/return"
-}
+pub const LOGIN_PATH: &str = "/steam/login";
+pub const RETURN_PATH: &str = "/steam/return";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -76,12 +47,20 @@ pub struct Friends {
     pub friends: Vec<Friend>,
 }
 
-fn client() -> Result<reqwest::blocking::Client, String> {
-    reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(20))
-        .user_agent(concat!("G-Lib/", env!("CARGO_PKG_VERSION")))
-        .build()
-        .map_err(|e| format!("client http indisponible : {e}"))
+/// Where the sign-in window may go: Steam's own sites, and the relay it
+/// returns to. A link on the page to anywhere else is not followed inside a
+/// window that is about to receive a sign-in.
+pub fn may_navigate(url: &tauri::Url) -> bool {
+    if url.scheme() != "https" {
+        return false;
+    }
+    let host = url.host_str().unwrap_or_default();
+    host == "steamcommunity.com"
+        || host == "store.steampowered.com"
+        || host == "login.steampowered.com"
+        || host == "help.steampowered.com"
+        || relay::is_at(url, LOGIN_PATH)
+        || relay::is_at(url, RETURN_PATH)
 }
 
 fn stored() -> Option<Stored> {
@@ -98,12 +77,12 @@ pub fn sign_out() {
 
 /// Hands the assertion Steam returned to the relay, and keeps the token.
 pub fn complete_sign_in(query: &str) -> Result<Profile, String> {
-    let response = client()?
-        .post(format!("{}/steam/session", relay()))
+    let response = relay::client()?
+        .post(relay::url("/steam/session"))
         .header("Content-Type", "text/plain")
         .body(query.to_string())
         .send()
-        .map_err(|e| format!("relais injoignable : {e}"))?;
+        .map_err(|_| "relais injoignable".to_string())?;
 
     if response.status() == reqwest::StatusCode::UNAUTHORIZED {
         return Err("Steam n'a pas confirmé la connexion. Réessayez.".into());
@@ -113,7 +92,7 @@ pub fn complete_sign_in(query: &str) -> Result<Profile, String> {
     }
     let signed: Stored = response
         .json()
-        .map_err(|e| format!("réponse du relais illisible : {e}"))?;
+        .map_err(|_| "réponse du relais illisible".to_string())?;
     credential_store::save(
         STORE_NAME,
         &serde_json::to_string(&signed).map_err(|e| e.to_string())?,
@@ -131,12 +110,12 @@ pub fn friends() -> Result<Friends, FriendsError> {
     let Some(stored) = stored() else {
         return Err(FriendsError::SignedOut);
     };
-    let response = client()
+    let response = relay::client()
         .map_err(FriendsError::Unavailable)?
-        .get(format!("{}/steam/friends", relay()))
+        .get(relay::url("/steam/friends"))
         .bearer_auth(&stored.token)
         .send()
-        .map_err(|e| FriendsError::Unavailable(format!("relais injoignable : {e}")))?;
+        .map_err(|_| FriendsError::Unavailable("relais injoignable".into()))?;
 
     // An expired or revoked token: forget it, the user signs in again.
     if response.status() == reqwest::StatusCode::UNAUTHORIZED {
@@ -151,7 +130,7 @@ pub fn friends() -> Result<Friends, FriendsError> {
     }
     response
         .json()
-        .map_err(|e| FriendsError::Unavailable(format!("réponse illisible : {e}")))
+        .map_err(|_| FriendsError::Unavailable("réponse illisible".into()))
 }
 
 #[cfg(test)]
@@ -159,22 +138,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn only_the_relay_return_path_counts() {
-        let relay = tauri::Url::parse(&relay()).unwrap();
-        let at = |path: &str| {
-            let mut url = relay.clone();
-            url.set_path(path);
-            url.set_query(Some("openid.mode=id_res"));
-            url
-        };
-        assert!(is_return(&at("/steam/return")));
-        assert!(!is_return(&at("/steam/return.evil")));
-        assert!(!is_return(&at("/steam/login")));
-        assert!(!is_return(
-            &tauri::Url::parse("https://steamcommunity.com/steam/return?x=1").unwrap()
-        ));
-        assert!(!is_return(
-            &tauri::Url::parse("http://g-lib-relay.workers.dev.evil.example/steam/return").unwrap()
-        ));
+    fn the_sign_in_window_stays_on_steam() {
+        let ok = |url: &str| may_navigate(&tauri::Url::parse(url).unwrap());
+        assert!(ok("https://steamcommunity.com/openid/login?openid.mode=checkid_setup"));
+        assert!(ok("https://login.steampowered.com/jwt/finalizelogin"));
+        assert!(ok(&relay::url(RETURN_PATH)));
+        assert!(!ok("http://steamcommunity.com/openid/login"));
+        assert!(!ok("https://steamcommunity.com.evil.example/"));
+        assert!(!ok("https://example.com/"));
+        assert!(!ok("file:///C:/Windows/"));
     }
 }

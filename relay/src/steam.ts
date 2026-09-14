@@ -19,7 +19,10 @@ const CLAIMED_ID = /^https:\/\/steamcommunity\.com\/openid\/id\/(\d{17})$/;
 export const RETURN_PATH = "/steam/return";
 
 /** How long a sign-in lasts before the app has to ask again. */
-const TOKEN_DAYS = 90;
+const TOKEN_DAYS = 30;
+
+/** An assertion older than this is refused: a sign-in takes seconds. */
+const MAX_ASSERTION_AGE_MS = 5 * 60_000;
 
 /** Steam's sign-in page, set to come back to this relay. */
 export function loginUrl(origin: string): string {
@@ -41,12 +44,19 @@ export function loginUrl(origin: string): string {
 export function claimedSteamId(
   params: URLSearchParams,
   origin: string,
+  now = Date.now(),
 ): string | null {
   if (params.get("openid.ns") !== OPENID_NS) return null;
   if (params.get("openid.mode") !== "id_res") return null;
   if (params.get("openid.op_endpoint") !== STEAM_OPENID) return null;
   // An assertion made for another site must not sign in here.
   if (params.get("openid.return_to") !== origin + RETURN_PATH) return null;
+
+  // The nonce starts with the time Steam issued it. A stale one is a replay.
+  const issued = Date.parse((params.get("openid.response_nonce") ?? "").slice(0, 20));
+  if (!Number.isFinite(issued) || Math.abs(now - issued) > MAX_ASSERTION_AGE_MS) {
+    return null;
+  }
 
   const claimed = params.get("openid.claimed_id") ?? "";
   if (params.get("openid.identity") !== claimed) return null;
@@ -92,7 +102,7 @@ async function hmac(secret: string, data: string): Promise<string> {
   return base64url(await crypto.subtle.sign("HMAC", key, encoder.encode(data)));
 }
 
-/** A token saying "this is Steam account `steamId`", good for 90 days. */
+/** A token saying "this is Steam account `steamId`", good for 30 days. */
 export async function issueToken(
   secret: string,
   steamId: string,

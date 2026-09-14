@@ -167,7 +167,7 @@ function DownloadProgress({ progress }: { progress: number }) {
 }
 
 /** The three Windows glyphs, at the size the system draws them. */
-function ControlIcon({
+export function ControlIcon({
   shape,
 }: {
   shape: "min" | "max" | "restore" | "close";
