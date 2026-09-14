@@ -112,6 +112,29 @@ pub fn open_store_url(url: &str) -> Result<()> {
     shell_open(url)
 }
 
+/// Where each store takes a game key.
+///
+/// No store accepts a key from a third-party application -- that would make
+/// every app a key tester -- so this only opens the place where the user pastes
+/// it. The targets are fixed here: the page names a store, never a URI.
+fn redeem_target(store: &str) -> Option<&'static str> {
+    match store {
+        // Steam's own "Activate a Product" dialog, inside the client.
+        "steam" => Some("steam://open/activateproduct"),
+        "epic" => Some("https://store.epicgames.com/redeem?lang=fr"),
+        "ea" => Some("https://www.ea.com/fr-fr/redeem"),
+        // Ubisoft retired its activation page: keys go through the key icon of
+        // the Ubisoft Connect client, which this opens.
+        "ubisoft" => Some("uplay://"),
+        _ => None,
+    }
+}
+
+pub fn open_redeem(store: &str) -> Result<()> {
+    let target = redeem_target(store).ok_or_else(|| anyhow!("boutique inconnue : {store}"))?;
+    shell_open(target)
+}
+
 /// Split a command line into its executable and the rest.
 ///
 /// An uninstall entry is one string: `"C:\...\setup.exe" /uninstall {GUID}`.
@@ -164,7 +187,20 @@ pub fn open_folder(path: &Path) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{open_store_url, split_command};
+    use super::{open_store_url, redeem_target, split_command};
+
+    #[test]
+    fn redeem_targets_are_fixed_per_store() {
+        assert_eq!(redeem_target("steam"), Some("steam://open/activateproduct"));
+        for store in ["epic", "ea"] {
+            let target = redeem_target(store).unwrap();
+            assert!(super::is_store_url(target), "{target} must be an allowed store page");
+        }
+        assert_eq!(redeem_target("ubisoft"), Some("uplay://"));
+        // Nothing else opens, whatever the page asks for.
+        assert_eq!(redeem_target("https://store.steampowered.com/"), None);
+        assert_eq!(redeem_target(""), None);
+    }
 
     /// Seuls les refus sont testes : le cas passant ouvrirait un navigateur.
     #[test]

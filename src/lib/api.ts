@@ -3,6 +3,7 @@ import type {
   Collection,
   MarketItem,
   Offers,
+  Platform,
   ScanResult,
   Shelf,
 } from "../types";
@@ -45,6 +46,10 @@ export const storeOffers = (name: string, appid: number | null) =>
  */
 export const openStoreUrl = (url: string) =>
   invoke<void>("open_store_url", { url });
+
+/** Opens where a store takes a game key. The backend picks the target. */
+export const openRedeem = (store: Platform) =>
+  invoke<void>("open_redeem", { store });
 
 /**
  * Montre la fenetre principale et ferme celle du demarrage.
