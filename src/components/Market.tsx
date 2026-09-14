@@ -507,7 +507,7 @@ function ShelfRow({
         // list of stores rather than one heap of games.
         // Padding above leaves room for the hover lift and the selection ring,
         // which the scroll container would otherwise clip.
-        <div className="flex [scrollbar-width:thin] gap-3 overflow-x-auto px-4 pt-1.5 pb-2">
+        <div className="flex gap-3 overflow-x-auto px-4 pt-1.5 pb-2">
           {shelf.items.map((item) => (
             <div key={item.id} className={`${SHELF_CARD} flex`}>
               <Card

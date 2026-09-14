@@ -36,7 +36,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost data: https://*.steamstatic.com https://images.igdb.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost",
+      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost data: https://*.steamstatic.com https://images.igdb.com https://assets.isthereanydeal.com https://*.epicgames.com https://cdn2.unrealengine.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost",
       "assetProtocol": {
         "enable": true,
         "scope": [
