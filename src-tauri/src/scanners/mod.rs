@@ -82,6 +82,17 @@ pub fn sort_library(games: &mut [Game]) {
 /// pas pour autant ignorer les jeux possedes : les oublier revenait a vider la
 /// grille de tout ce qui n'est pas installe.
 pub fn steam_owned_games(cache: &mut crate::cache::StoreCache, allow_network: bool) -> Vec<Game> {
+    steam_owned_games_reporting(cache, allow_network, |_, _| {})
+}
+
+/// The same, telling `progress(done, total)` after each store call. Only the
+/// appids the cache does not know count: they are what takes time, and on a
+/// first run they are all of them.
+pub fn steam_owned_games_reporting(
+    cache: &mut crate::cache::StoreCache,
+    allow_network: bool,
+    mut progress: impl FnMut(usize, usize),
+) -> Vec<Game> {
     use crate::cache::StoreEntry;
 
     let appids = steam::owned_appids();
@@ -93,6 +104,8 @@ pub fn steam_owned_games(cache: &mut crate::cache::StoreCache, allow_network: bo
 
     if allow_network && !unknown.is_empty() {
         if let Some(client) = crate::steam_store::client() {
+            let mut done = 0;
+            progress(done, unknown.len());
             for chunk in unknown.chunks(crate::steam_store::ITEMS_PER_CALL) {
                 let found: std::collections::HashMap<u32, crate::steam_store::StoreItem> =
                     crate::steam_store::get_items(&client, chunk)
@@ -108,6 +121,8 @@ pub fn steam_owned_games(cache: &mut crate::cache::StoreCache, allow_network: bo
                         }),
                     );
                 }
+                done += chunk.len();
+                progress(done, unknown.len());
             }
         }
     }

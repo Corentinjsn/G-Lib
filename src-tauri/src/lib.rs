@@ -119,6 +119,14 @@ async fn scan_library(
     Ok(library.publish(&activity, result))
 }
 
+#[derive(Clone, serde::Serialize)]
+struct CatalogProgress {
+    /// "catalog" while Steam names the owned appids, then "covers".
+    stage: &'static str,
+    done: usize,
+    total: usize,
+}
+
 /// The half of the library that needs the network: the Steam games the account
 /// owns but has not installed, whose appids only the store can turn into names,
 /// and then every cover still missing.
@@ -140,16 +148,30 @@ async fn fetch_catalog(
 
     let result = tauri::async_runtime::spawn_blocking(move || {
         let mut result = current;
+        // On a first run this is minutes of work, shown in the startup window.
+        let report = |stage: &'static str| {
+            let app = app.clone();
+            move |done: usize, total: usize| {
+                let _ = app.emit(
+                    "catalog-progress",
+                    CatalogProgress { stage, done, total },
+                );
+            }
+        };
 
         let mut store = cache::load_store(&dir);
-        let owned = scanners::steam_owned_games(&mut store, true);
+        let owned = scanners::steam_owned_games_reporting(&mut store, true, report("catalog"));
         let _ = cache::save_store(&dir, &store);
         scanners::merge_owned(&mut result.games, owned);
         playtime::apply(&mut result.games, &playtime::load(&dir));
         flags::apply(&mut result.games, &flags::load(&dir));
         scanners::sort_library(&mut result.games);
 
-        artwork::fetch_missing(&mut result.games, &cache::covers_dir(&dir));
+        artwork::fetch_missing(
+            &mut result.games,
+            &cache::covers_dir(&dir),
+            report("covers"),
+        );
         let _ = cache::save(&dir, &result);
         result
     })
