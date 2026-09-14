@@ -1,5 +1,11 @@
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
-import type { Collection, MarketItem, Offers, ScanResult } from "../types";
+import type {
+  Collection,
+  MarketItem,
+  Offers,
+  ScanResult,
+  Shelf,
+} from "../types";
 
 /** Previous scan read straight off disk, so the grid can paint immediately. */
 export const loadCachedLibrary = () =>
@@ -17,6 +23,9 @@ export const refreshPlaytime = () => invoke<ScanResult>("refresh_playtime");
 /** Cherche un jeu a acheter, chez Steam faute d'autre catalogue public. */
 export const searchMarket = (query: string) =>
   invoke<MarketItem[]>("search_market", { query });
+
+/** The store's front page. Cached for half an hour by the backend. */
+export const marketHome = () => invoke<Shelf[]>("market_home");
 
 /**
  * Ce que le meme jeu coute ailleurs.

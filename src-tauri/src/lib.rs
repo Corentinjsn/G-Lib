@@ -4,6 +4,7 @@ mod binvdf;
 mod cache;
 mod collections;
 mod credentials;
+mod epic_promotions;
 mod flags;
 mod itad;
 mod igdb;
@@ -14,6 +15,7 @@ mod offers;
 mod playtime;
 mod scanners;
 mod steam_store;
+mod store_home;
 mod vdf;
 mod watcher;
 
@@ -329,6 +331,14 @@ async fn search_market(query: String) -> Result<Vec<market::MarketItem>, String>
     .map_err(|e| format!("recherche interrompue : {e}"))?
 }
 
+/// The store's front page: promotions per store, then Steam's charts.
+#[tauri::command]
+async fn market_home() -> Result<Vec<store_home::Shelf>, String> {
+    tauri::async_runtime::spawn_blocking(|| store_home::home(credentials::itad_key().as_deref()))
+        .await
+        .map_err(|e| format!("boutique interrompue : {e}"))
+}
+
 /// Ce que le meme jeu coute chez Epic, Ubisoft et Instant Gaming.
 ///
 /// Separe de `search_market` : trois requetes de plus par jeu, dont deux
@@ -489,6 +499,7 @@ pub fn run() {
             set_collection_membership,
             finish_splash,
             search_market,
+            market_home,
             store_offers,
             open_store_url
         ])
